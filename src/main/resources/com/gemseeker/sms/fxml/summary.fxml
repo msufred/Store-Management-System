@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.LineChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+
+<VBox prefHeight="600.0" prefWidth="900.0" spacing="8.0" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <children>
+      <Label styleClass="text-24px" text="Sales (Php)" />
+      <LineChart>
+        <xAxis>
+          <CategoryAxis label="Month" side="BOTTOM" />
+        </xAxis>
+        <yAxis>
+          <NumberAxis label="Php" minorTickCount="0" side="LEFT" upperBound="100000.0" />
+        </yAxis>
+      </LineChart>
+   </children>
+   <padding>
+      <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+   </padding>
+</VBox>

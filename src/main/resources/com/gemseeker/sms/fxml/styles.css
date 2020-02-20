@@ -1,0 +1,60 @@
+/*
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+*/
+/* 
+    Created on : 4 Feb 2020, 2:57:32 PM
+    Author     : gemini1991
+*/
+.content-pane {
+    -fx-background-color: #ffffff;
+}
+.main-toggle {
+    -fx-background-radius: 0;
+    -fx-font-size: 14px;
+    -fx-text-fill: #ffffff;
+}
+.main-toggle:selected {
+    -fx-background-color: #cccccc;
+    -fx-text-fill: #000000;
+}
+.main-toggle-v1 {
+    -fx-background-color: #15807e;
+}
+.main-toggle-v2 {
+    -fx-background-color: #199487;
+}
+.main-toggle-v3 {
+    -fx-background-color: #1da381;
+}
+.main-toggle-v4 {
+    -fx-background-color: #50b88e;
+}
+
+.text-title {
+    -fx-font-size: 32px;
+    -fx-text-fill: #333333;
+}
+
+.text-24px {
+    -fx-font-size: 24px;
+}
+
+.text-16px{
+    -fx-font-size: 16px;
+}
+
+.text-14px {
+    -fx-font-size: 14px;
+}
+
+.text-12px {
+    -fx-font-size: 12px;
+}
+
+.sales-box-v1 {
+    -fx-background-color: #15807e;
+    -fx-padding: 8px;
+    -fx-spacing: 4px;
+}

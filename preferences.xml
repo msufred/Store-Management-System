@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><preferences>
+    <general>
+        <app-name>Payment Tracking Application</app-name>
+    </general>
+    <database>
+        <url>localhost/billings</url>
+        <user>root</user>
+        <host>localhost</host>
+        <name>billings</name>
+        <port>3306</port>
+        <password>gemini1991</password>
+    </database>
+</preferences>
