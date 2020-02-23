@@ -5,16 +5,22 @@ import com.gemseeker.sms.core.data.EnumAccountStatus;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Address;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.fxml.components.ErrorDialog;
+import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.Calendar;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyEvent;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
@@ -34,20 +40,20 @@ public class AddAccountController extends Controller {
     @FXML TextField tfCity;
     @FXML TextField tfContactNo;
     @FXML ChoiceBox<String> cbDataPlan;
+    @FXML TextField tfMonthlyPayment;
     @FXML Button btnGenerate;
     @FXML Button btnSave;
     @FXML Button btnCancel;
     
-    private Database database;
+    private final AccountsController accountsController;
+    
+    public AddAccountController(AccountsController accountsController) {
+        this.accountsController = accountsController;
+    }
     
     @Override
     public void onLoadTask() {
         super.onLoadTask();
-        try {
-            database = Database.getInstance();
-        } catch (SQLException ex) {
-            System.err.println("Failed to get database instance.");
-        }
     }
 
     @Override
@@ -55,11 +61,18 @@ public class AddAccountController extends Controller {
         cbDataPlan.setItems(FXCollections.observableArrayList("10", "100", "Unlimited"));
         cbDataPlan.getSelectionModel().select(0);
         
-        btnGenerate.setOnAction(evt -> generateAccountNo());
-        btnSave.setOnAction(evt -> save());
-        btnCancel.setOnAction(evt -> {
-            if (stage != null) stage.close();
+        tfMonthlyPayment.addEventFilter(KeyEvent.KEY_TYPED, evt -> {
+            if (!"01234569.".contains(evt.getCharacter())) evt.consume();
         });
+        
+        btnGenerate.setOnAction(evt -> generateAccountNo());
+        
+        btnSave.setOnAction(evt -> {
+            save();
+            close();
+            accountsController.refresh();
+        });
+        btnCancel.setOnAction(evt -> close());
         
         setupTextFields(tfFirstname, tfLastname, tfBuilding, tfStreet, tfCity, tfContactNo);
     }
@@ -75,8 +88,13 @@ public class AddAccountController extends Controller {
         stage.show();
     }
     
+    public void close() {
+        if (stage != null) stage.close();
+    }
+    
     private void generateAccountNo() {
-        if (database != null) {
+        try {
+            Database database = Database.getInstance();
             int count = database.getAccountsCount();
             if (count == 0) {
                 tfAccountNo.setText("ACCT-0");
@@ -92,6 +110,8 @@ public class AddAccountController extends Controller {
                 }
                 tfAccountNo.setText(accntNo);
             }
+        } catch (SQLException ex) {
+            ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
         }
     }
     
@@ -111,11 +131,36 @@ public class AddAccountController extends Controller {
             tfBuilding.getText().isEmpty() ||
             tfStreet.getText().isEmpty() ||
             tfCity.getText().isEmpty() ||
-            tfContactNo.getText().isEmpty()
+            tfContactNo.getText().isEmpty()||
+            tfMonthlyPayment.getText().isEmpty()
         );
     }
     
     private void save() {
+        ProgressBarDialog.show();
+        Thread t = new Thread(() -> {
+            try {
+                Database database = Database.getInstance();
+                Account account = getAccountInfo();
+                boolean added = database.addAccount(account);
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    if (!added) {
+                        ErrorDialog.show("0x0002", "Failed to add account entry to the dabatase.");
+                    }
+                });
+            } catch (SQLException e) {
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    ErrorDialog.show(e.getErrorCode() + "", e.getLocalizedMessage());
+                });
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+    
+    private Account getAccountInfo() {
         Account newAccount = new Account();
         newAccount.setAccountNumber(tfAccountNo.getText());
         String firstName = tfFirstname.getText();
@@ -141,15 +186,6 @@ public class AddAccountController extends Controller {
         newAccount.setDataPlan(dataPlan);
         newAccount.setDateRegistered(Calendar.getInstance().getTime());
         newAccount.setStatus(EnumAccountStatus.ACTIVE);
-        
-        try {
-            if (database == null) database = Database.getInstance();
-            boolean added = database.addAccount(newAccount);
-            if (added) {
-                if (stage != null) stage.close();
-            }
-        } catch (SQLException e) {
-            System.err.println("Failed to save account entry.");
-        }
+        return newAccount;
     }
 }

@@ -48,7 +48,8 @@ public class AppMain extends Application implements Initializable {
         root = new StackPane();
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         stage.setScene(scene);
-        stage.setMaximized(true);
+//        stage.setMaximized(true);
+        stage.setTitle("LIVErary IT Solutions");
         stage.show();
 
         loadPanels();

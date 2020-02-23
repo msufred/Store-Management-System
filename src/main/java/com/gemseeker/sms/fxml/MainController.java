@@ -23,6 +23,8 @@ public class MainController extends Controller {
     @FXML ToggleButton btnReports;
     @FXML ToggleButton btnPayments;
     @FXML ToggleButton btnSales;
+    @FXML ToggleButton btnTransactions;
+    @FXML ToggleButton btnInventory;
     @FXML StackPane paymentsContentPane;
     
     private ToggleGroup paymentsToggleGroup;
@@ -37,6 +39,8 @@ public class MainController extends Controller {
     private SalesController salesController;
     private ReportsController reportsController;
     
+    private InventoryController inventoryController;
+    
     // ...
     private Controller mCurrentController = null;
 
@@ -49,6 +53,8 @@ public class MainController extends Controller {
         salesController = new SalesController();
         reportsController = new ReportsController();
         
+        inventoryController = new InventoryController();
+        
         loadControllers();
         
         // todo load initial controller
@@ -59,10 +65,11 @@ public class MainController extends Controller {
     public void initialize(URL location, ResourceBundle resources) {      
         paymentsToggleGroup = new ToggleGroup();
         paymentsToggleGroup.getToggles().addAll(btnDashboard, btnCustomers, btnReports,
-                btnPayments, btnSales);
+                btnPayments, btnSales, btnTransactions, btnInventory);
         setupToggles();
         
-        setupTogglesEventFilter(btnDashboard, btnCustomers, btnReports, btnPayments, btnSales);
+        setupTogglesEventFilter(btnDashboard, btnCustomers, btnReports, btnPayments, 
+                btnSales, btnTransactions, btnInventory);
     }
     
     private void loadControllers() {
@@ -74,6 +81,8 @@ public class MainController extends Controller {
         loader.load("fxml/accounts.fxml", accountssController);
         loader.load("fxml/sales.fxml", salesController);
         loader.load("fxml/reports.fxml", reportsController);
+        
+        loader.load("fxml/inventory.fxml", inventoryController);
     }
 
     /**
@@ -100,6 +109,10 @@ public class MainController extends Controller {
                 changeView(reportsController);
             } else if (t1.equals(btnSales)) {
                 changeView(salesController);
+            } else if (t1.equals(btnTransactions)) {
+                
+            } else if (t1.equals(btnInventory)) {
+                changeView(inventoryController);
             }
         });
     }

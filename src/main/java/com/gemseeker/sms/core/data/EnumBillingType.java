@@ -4,16 +4,20 @@ package com.gemseeker.sms.core.data;
  *
  * @author gemini1991
  */
-public enum EnumBillingStatus {
-    FOR_PAYMENT("For Payment"), PAID("Paid"), OVERDUE("Overdue");
+public enum EnumBillingType {
+    WISP("WISP"), ITEM("ITEM");
     
     private final String name;
-    EnumBillingStatus(String str) {
-        this.name = str;
+    EnumBillingType(String name) {
+        this.name = name;
     }
     
     @Override
     public String toString() {
+        return name;
+    }
+    
+    public String getName() {
         return name;
     }
 }

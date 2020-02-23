@@ -12,7 +12,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
-<VBox prefHeight="689.0" prefWidth="627.0" spacing="8.0" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox prefHeight="700.0" prefWidth="627.0" spacing="8.0" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
       <Label styleClass="text-title" text="New Billing Statement (WISP)" />
       <Label text="Select Account" />
@@ -26,10 +26,10 @@
       <Separator prefWidth="200.0" />
       <HBox alignment="CENTER_LEFT" spacing="8.0">
          <children>
-            <Label text="Billing for Month of:" />
-            <ChoiceBox fx:id="cbMonths" prefWidth="150.0" />
-            <Label text="Year" />
-            <ChoiceBox fx:id="cbYears" prefWidth="150.0" />
+            <Label text="From" />
+            <DatePicker fx:id="dateFrom" />
+            <Label text="to" />
+            <DatePicker fx:id="dateTo" />
          </children>
       </HBox>
       <Separator prefWidth="200.0" />
@@ -47,7 +47,13 @@
                   <Button fx:id="btnAdd" mnemonicParsing="false" text="Add" />
                </children>
             </HBox>
-            <ListView prefHeight="200.0" prefWidth="200.0" />
+            <ListView fx:id="listPayments" prefHeight="200.0" prefWidth="200.0" />
+            <HBox alignment="CENTER_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="8.0">
+               <children>
+                  <Label text="Total (Php)" />
+                  <TextField fx:id="tfTotal" editable="false" />
+               </children>
+            </HBox>
          </children>
          <padding>
             <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
@@ -56,17 +62,18 @@
       <Separator prefWidth="200.0" />
       <HBox alignment="CENTER_LEFT" spacing="8.0">
          <children>
-            <Label text="Total" />
-            <TextField />
-            <Label text="Due on:" />
+            <Label text="Due Date" />
             <DatePicker fx:id="dueDate" />
+            <Label text="Status" />
+            <ChoiceBox fx:id="cbStatus" prefHeight="27.0" prefWidth="184.0" />
          </children>
       </HBox>
+      <Separator prefWidth="200.0" />
       <HBox alignment="CENTER_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="8.0">
          <children>
             <Button fx:id="btnCancel" mnemonicParsing="false" text="Cancel" />
-            <Button fx:id="btnSavePrint" mnemonicParsing="false" text="Save &amp; Print" />
-            <Button fx:id="btnSaveOnly" mnemonicParsing="false" text="Save Only" />
+            <Button fx:id="btnSavePrint" disable="true" mnemonicParsing="false" text="Save &amp; Print" />
+            <Button fx:id="btnSaveOnly" disable="true" mnemonicParsing="false" text="Save Only" />
          </children>
          <VBox.margin>
             <Insets top="32.0" />

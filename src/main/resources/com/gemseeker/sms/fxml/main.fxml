@@ -51,10 +51,16 @@
                         <String fx:value="main-toggle-v1" />
                      </styleClass>
                   </ToggleButton>
-                  <ToggleButton fx:id="btnPayments1" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Transactions">
+                  <ToggleButton fx:id="btnTransactions" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Transactions">
                      <styleClass>
                         <String fx:value="main-toggle" />
                         <String fx:value="main-toggle-v2" />
+                     </styleClass>
+                  </ToggleButton>
+                  <ToggleButton fx:id="btnInventory" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Product Inventory">
+                     <styleClass>
+                        <String fx:value="main-toggle" />
+                        <String fx:value="main-toggle-v3" />
                      </styleClass>
                   </ToggleButton>
                </children>

@@ -5,6 +5,7 @@ import com.gemseeker.sms.Loader;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Address;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
 import java.sql.SQLException;
@@ -42,10 +43,13 @@ public class AccountsController extends Controller {
     
     private Database database;
     
+    /**
+     * Initialize controllers; load FXMLs
+     */
     @Override
     public void onLoadTask() {
         super.onLoadTask();
-        addAccountController = new AddAccountController();
+        addAccountController = new AddAccountController(this);
         
         Loader loader = Loader.getInstance();
         loader.load("fxml/add_account.fxml", addAccountController);
@@ -78,14 +82,16 @@ public class AccountsController extends Controller {
             }
         });
         
-        btnRefresh.setOnAction(evt -> {
-            onResume();
-        });
+        btnRefresh.setOnAction(evt -> refresh());
     }
 
     @Override
     public void onResume() {
         super.onResume();
+        refresh();
+    }
+
+    public void refresh() {
         ProgressBarDialog.show();
         Thread t = new Thread(() -> {
             try {
@@ -96,7 +102,10 @@ public class AccountsController extends Controller {
                     ProgressBarDialog.close();
                 });
             } catch (SQLException ex) {
-                System.err.println("Failed to get database entrt. " + ex);
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    ErrorDialog.show(String.valueOf(ex.getErrorCode()), ex.getMessage());
+                });
             }
         });
         t.setDaemon(true);

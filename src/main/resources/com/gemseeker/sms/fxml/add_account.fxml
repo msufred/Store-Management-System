@@ -55,7 +55,7 @@
             <Label text="Bandwidth" />
             <ChoiceBox fx:id="cbDataPlan" prefHeight="27.0" prefWidth="155.0" />
             <Label text="Monthly Payment" />
-            <TextField />
+            <TextField fx:id="tfMonthlyPayment" />
          </children>
       </HBox>
       <Region prefHeight="57.0" prefWidth="525.0" />
