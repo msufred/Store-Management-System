@@ -1,7 +1,6 @@
 package com.gemseeker.sms.data;
 
 import com.gemseeker.sms.Utils;
-import com.gemseeker.sms.core.data.EnumBillingType;
 import com.gemseeker.sms.core.data.IEntry;
 import java.util.ArrayList;
 import java.util.Date;
@@ -19,7 +18,7 @@ public class Billing implements IEntry {
     private Date fromDate;
     private Date toDate;
     private String dueDate;
-    private String status;
+    private EnumBillingStatus status;
     private Date dateUpdated;
     private EnumBillingType type;
     
@@ -54,11 +53,11 @@ public class Billing implements IEntry {
         this.billingDate = billingDate;
     }
 
-    public String getStatus() {
+    public EnumBillingStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(EnumBillingStatus status) {
         this.status = status;
     }
 
@@ -111,7 +110,13 @@ public class Billing implements IEntry {
     }
     
     public void setPayments(ArrayList<Payment> payments) {
+        if (payments != null) {
+            for (Payment p : payments) {
+                p.setBillingId(billingId);
+            }
+        }
         this.payments = payments;
+        calculateAmount();
     }
     
     public ArrayList<Payment> getPayments() {
@@ -120,7 +125,32 @@ public class Billing implements IEntry {
     
     public void addPayment(Payment payment) {
         if (payments == null) payments = new ArrayList<>();
+        if (payment != null) payment.setBillingId(billingId);
         payments.add(payment);
+        calculateAmount();
+    }
+    
+    public void updatePayment(Payment updatedPayment) {
+        if (updatedPayment != null) {
+            if(payments != null) {
+                for (int i = 0; i < payments.size(); i++) {
+                    Payment p = payments.get(i);
+                    if (p.getPaymentId() == updatedPayment.getPaymentId()) {
+                        payments.remove(i);
+                        payments.add(i, updatedPayment);
+                        break;
+                    }
+                }
+            }
+        }
+        calculateAmount();
+    }
+    
+    public void removePayment(Payment payment) {
+        if (payments != null) {
+            payments.remove(payment);
+            calculateAmount();
+        }
     }
     
     public void setAccount(Account account) {
@@ -129,6 +159,21 @@ public class Billing implements IEntry {
 
     public Account getAccount() {
         return account;
+    }
+    
+    /**
+     * Calculates the total amount for this billing entry. This method should be
+     * called in addPayment, removePayment and updatePayment methods of this
+     * Billing class.
+     */
+    private void calculateAmount() {
+        if (payments != null) {
+            double total = 0;
+            for (Payment p : payments) {
+                total += p.getTotalAmount();
+            }
+            setAmount(total);
+        }
     }
     
     @Override
@@ -156,8 +201,6 @@ public class Billing implements IEntry {
             sql.append(Utils.MYSQL_DATETIME_FORMAT.format(dateUpdated)).append("', '");
         }
         sql.append(type.getName()).append("')");
-        
-        System.out.println(sql.toString());
         
         return sql.toString();
     }

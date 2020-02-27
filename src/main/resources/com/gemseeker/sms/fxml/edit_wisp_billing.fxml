@@ -2,8 +2,6 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.control.ChoiceBox?>
-<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ListView?>
@@ -14,16 +12,44 @@
 
 <VBox prefHeight="700.0" prefWidth="627.0" spacing="8.0" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <Label styleClass="text-title" text="New Billing Statement (WISP)" />
-      <Label text="Select Account" />
-      <ChoiceBox fx:id="cbAccounts" prefHeight="27.0" prefWidth="597.0" />
-      <Label text="Bandwidth Speed" />
-      <TextField fx:id="tfData" disable="true" />
-      <Label text="Previous Balance" />
-      <TextField fx:id="tfBalance" disable="true" />
-      <Label text="Description" />
-      <TextField fx:id="tfDesc" disable="true" />
+      <Label styleClass="text-title" text="Edit Billing Statement (WISP)" />
+      <Label text="Account" />
+      <TextField fx:id="tfAccount" editable="false" />
+      <HBox spacing="8.0">
+         <children>
+            <VBox spacing="8.0">
+               <children>
+                  <Label text="Bandwidth Speed" />
+                  <TextField fx:id="tfData" editable="false" prefWidth="260.0" />
+               </children>
+            </VBox>
+            <VBox spacing="8.0">
+               <children>
+                  <Label text="Monthly Payment (Php)" />
+                  <TextField fx:id="tfMonthlyPayment" editable="false" prefWidth="260.0" />
+               </children>
+            </VBox>
+         </children>
+      </HBox>
       <Separator prefWidth="200.0" />
+      <HBox spacing="8.0">
+         <children>
+            <VBox spacing="8.0">
+               <children>
+                  <Label text="Previous Balance" />
+                  <TextField fx:id="tfBalance" editable="false" prefWidth="260.0" />
+               </children>
+            </VBox>
+            <VBox spacing="8.0">
+               <children>
+                  <Label text="Description" />
+                  <TextField fx:id="tfDesc" prefWidth="260.0" />
+               </children>
+            </VBox>
+         </children>
+      </HBox>
+      <Separator prefWidth="200.0" />
+      <Label text="Payment Duration" />
       <HBox alignment="CENTER_LEFT" spacing="8.0">
          <children>
             <Label text="From" />
@@ -33,20 +59,9 @@
          </children>
       </HBox>
       <Separator prefWidth="200.0" />
-      <Label text="Payments" />
+      <Label text="Items" />
       <VBox spacing="8.0">
          <children>
-            <HBox alignment="CENTER_LEFT" spacing="8.0">
-               <children>
-                  <Label text="For" />
-                  <ComboBox fx:id="cbPaymentType" editable="true" prefWidth="150.0" promptText="Payment Type" />
-                  <Label text="Amount" />
-                  <TextField fx:id="tfAmount" promptText="Amount" />
-                  <Label text="Qty" />
-                  <TextField fx:id="tfQuantity" prefHeight="27.0" prefWidth="96.0" promptText=" " />
-                  <Button fx:id="btnAdd" mnemonicParsing="false" text="Add" />
-               </children>
-            </HBox>
             <ListView fx:id="listPayments" prefHeight="200.0" prefWidth="200.0" />
             <HBox alignment="CENTER_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="8.0">
                <children>
@@ -55,25 +70,22 @@
                </children>
             </HBox>
          </children>
-         <padding>
-            <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
-         </padding>
       </VBox>
       <Separator prefWidth="200.0" />
       <HBox alignment="CENTER_LEFT" spacing="8.0">
          <children>
             <Label text="Due Date" />
             <DatePicker fx:id="dueDate" />
-            <Label text="Status" />
-            <ChoiceBox fx:id="cbStatus" prefHeight="27.0" prefWidth="184.0" />
+            <Label text="Billing Status" />
+            <TextField fx:id="tfStatus" editable="false" />
          </children>
       </HBox>
       <Separator prefWidth="200.0" />
       <HBox alignment="CENTER_RIGHT" prefHeight="100.0" prefWidth="200.0" spacing="8.0">
          <children>
             <Button fx:id="btnCancel" mnemonicParsing="false" text="Cancel" />
-            <Button fx:id="btnSavePrint" disable="true" mnemonicParsing="false" text="Save &amp; Print" />
-            <Button fx:id="btnSaveOnly" disable="true" mnemonicParsing="false" text="Save Only" />
+            <Button fx:id="btnUpdatePrint" mnemonicParsing="false" text="Update &amp; Print" />
+            <Button fx:id="btnUpdate" mnemonicParsing="false" text="Update" />
          </children>
          <VBox.margin>
             <Insets top="32.0" />

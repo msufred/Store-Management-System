@@ -18,9 +18,9 @@ public class PaymentListCell extends ListCell<Payment> {
             setText(null);
             setGraphic(null);
         } else {
-            setText(String.format("%s\t\t\t\t%.2f\t\t\t\tQty:%d", 
-                    payment.getName(),
+            setText(String.format("%.2f -- %s (%d)", 
                     payment.getAmount(),
+                    payment.getName(),
                     payment.getQuantity()));
         }
     }

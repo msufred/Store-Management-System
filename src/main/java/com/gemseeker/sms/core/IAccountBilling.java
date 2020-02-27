@@ -1,6 +1,6 @@
 package com.gemseeker.sms.core;
 
-import com.gemseeker.sms.core.data.EnumBillingStatus;
+import com.gemseeker.sms.data.EnumBillingStatus;
 import java.util.Date;
 
 /**

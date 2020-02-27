@@ -38,7 +38,7 @@ public class MainController extends Controller {
     private AccountsController accountssController;
     private SalesController salesController;
     private ReportsController reportsController;
-    
+    private TransactionsController transactionsController;
     private InventoryController inventoryController;
     
     // ...
@@ -52,7 +52,7 @@ public class MainController extends Controller {
         accountssController = new AccountsController();
         salesController = new SalesController();
         reportsController = new ReportsController();
-        
+        transactionsController = new TransactionsController();
         inventoryController = new InventoryController();
         
         loadControllers();
@@ -77,11 +77,11 @@ public class MainController extends Controller {
         
         // load payments controllers
         loader.load("fxml/summary.fxml", summaryController);
-        loader.load("fxml/payments.fxml", billingsController);
+        loader.load("fxml/billings.fxml", billingsController);
         loader.load("fxml/accounts.fxml", accountssController);
         loader.load("fxml/sales.fxml", salesController);
         loader.load("fxml/reports.fxml", reportsController);
-        
+        loader.load("fxml/transactions.fxml", transactionsController);
         loader.load("fxml/inventory.fxml", inventoryController);
     }
 
@@ -110,7 +110,7 @@ public class MainController extends Controller {
             } else if (t1.equals(btnSales)) {
                 changeView(salesController);
             } else if (t1.equals(btnTransactions)) {
-                
+                changeView(transactionsController);
             } else if (t1.equals(btnInventory)) {
                 changeView(inventoryController);
             }

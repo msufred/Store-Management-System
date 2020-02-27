@@ -2,10 +2,12 @@ package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
-import com.gemseeker.sms.core.data.EnumBillingType;
+import static com.gemseeker.sms.data.EnumBillingStatus.*;
+import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.EnumBillingStatus;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
@@ -51,7 +53,7 @@ public class AddItemBillingController extends Controller {
     @FXML Spinner spQuantity;
     @FXML TextField tfTotal;
     @FXML DatePicker dueDate;
-    @FXML ChoiceBox<String> cbStatus;
+    @FXML ChoiceBox<EnumBillingStatus> cbStatus;
     @FXML Button btnAdd;
     @FXML Button btnCancel;
     @FXML Button btnSave;
@@ -101,7 +103,7 @@ public class AddItemBillingController extends Controller {
         });
         
         cbStatus.setItems(FXCollections.observableArrayList(
-                "For Delivery", "For Payment", "Paid", "Overdue"
+                FOR_REVIEW, FOR_DELIVERY, DELIVERED, CANCELLED, FOR_PAYMENT, PAID, OVERDUE
         ));
         cbStatus.getSelectionModel().select(0);
         
@@ -111,7 +113,7 @@ public class AddItemBillingController extends Controller {
         
         btnSave.setOnAction(evt -> {
             if (dueDate.getEditor().getText().isEmpty()) {
-                ErrorDialog.show("Error!", "Please set due date.");
+                ErrorDialog.show("Oh snap!", "Please set due date.");
             } else {
                 save();
                 close();
@@ -206,15 +208,25 @@ public class AddItemBillingController extends Controller {
     
     private void save() {
         ProgressBarDialog.show();
+        Billing billing = getBillingInfo();
         Thread t = new Thread(() -> {
             try {
                 Database database = Database.getInstance();
-                Billing billing = getBillingInfo();
                 boolean added = database.addBilling(billing);
+                if (added) {
+                    // update inventory
+                    for (Payment p : billing.getPayments()) {
+                        Product product = database.findProductByName(p.getName());
+                        if (product != null) {
+                            int newCount = product.getCount() - p.getQuantity();
+                            database.updateProductCount(product.getProductId(), newCount);
+                        }
+                    }
+                }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!added) {
-                        ErrorDialog.show("0x0002", "Failed to add billing entry to the database.");
+                        ErrorDialog.show("Database Error", "Failed to add billing entry to the database.");
                     }
                 });
             } catch (SQLException ex) {
@@ -234,7 +246,11 @@ public class AddItemBillingController extends Controller {
         billing.setAccount(account);
         billing.setAccountNo(account.getAccountNumber());
         billing.setBillingDate(Calendar.getInstance().getTime());
-        billing.setAmount(Double.parseDouble(tfTotal.getText()));
+//        billing.setAmount(Double.parseDouble(tfTotal.getText()));
+
+        // NOTE: No need to set the total amount here since the Billing already
+        // does this. Just add the Payments and it will calculate the total amount
+        // itself ;)
         for (Payment p : itemsTable.getItems()) {
             billing.addPayment(p);
         }

@@ -14,10 +14,14 @@ public class BillingNameTableCell extends TableCell<Billing, Account> {
     protected void updateItem(Account account, boolean empty) {
         super.updateItem(account, empty);
         setGraphic(null);
-        if (account == null || empty) {
-            setText(null);
+        if (empty) {
+            setText("");
         } else {
-            setText(String.format("%s %s", account.getFirstName(), account.getLastName()));
+            if (account != null) {
+                setText(String.format("%s %s", account.getFirstName(), account.getLastName()));
+            } else {
+                setText("< Account Removed >");
+            }
         }
     }
     

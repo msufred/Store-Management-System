@@ -74,9 +74,10 @@ public class EditItemController extends Controller {
     }
 
     public void show(Billing billing, Payment payment) {
+        clearFields();
         // making sure Billing and Payment entries are not null!
         if (billing == null || payment == null) {
-            ErrorDialog.show("0x0006", "No Billing and Payment entry selected.");
+            ErrorDialog.show("Item Update Error", "No Billing and Payment entry selected.");
             return;
         }
         
@@ -107,11 +108,20 @@ public class EditItemController extends Controller {
                 Product p = database.findProductByName(payment.getName());
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
-                    if (p == null) ErrorDialog.show("0x0005", "Failed to get Product info.");
+                    if (p == null) ErrorDialog.show("Item Update Error", "Failed to get Product info.");
                     else {
-                        showProductDetails(p);
+                        tfName.setText(p.getName());
+                        tfPrice.setText(p.getPrice() + "");
+                        tfStock.setText(p.getCount() + "");
+
+                        if (p.getCount() > 0) {
+                            spQuantity.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, p.getCount()));
+                        } else {
+                            spQuantity.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, payment.getQuantity()));
+                        }
                         tfTotal.setText(payment.getTotalAmount() + "");
                         spQuantity.getValueFactory().setValue(payment.getQuantity());
+                        this.product = p;
                     }
                 });
             } catch (SQLException ex) {
@@ -125,15 +135,6 @@ public class EditItemController extends Controller {
         t.start();
     }
     
-    private void showProductDetails(Product product) {
-        tfName.setText(product.getName());
-        tfPrice.setText(product.getPrice() + "");
-        tfStock.setText(product.getCount() + "");
-        
-        spQuantity.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, product.getCount()));
-        this.product = product;
-    }
-    
     private void calculate() {
         double total = product.getPrice() * spQuantity.getValue();
         tfTotal.setText(total + "");
@@ -141,12 +142,11 @@ public class EditItemController extends Controller {
     
     private void update() {
         ProgressBarDialog.show();
+        Payment updatedPayment = getPaymentInfo();
         Thread t = new Thread(() -> {
             try {
                 Database database = Database.getInstance();
-                Payment updatedPayment = getPaymentInfo();
                 boolean updated = database.updatePayment(payment.getPaymentId(), updatedPayment);
-                
                 if (updated) {
                     // TODO update inventory
                     int diff = payment.getQuantity() - updatedPayment.getQuantity();
@@ -154,31 +154,21 @@ public class EditItemController extends Controller {
                     product.setCount(newCount);
                     database.updateProductCount(product.getProductId(), newCount);
                     
-                    // TODO update billing total amount
-                    for (int i=0; i<billing.getPayments().size(); i++) {
-                        Payment p = billing.getPayments().get(i);
-                        if (p.getPaymentId() == updatedPayment.getPaymentId()) {
-                            billing.getPayments().remove(payment);
-                            billing.getPayments().add(i, updatedPayment);
-                            break;
-                        }
-                    }
-                    
-                    double newTotal = 0;
-                    for (Payment p : billing.getPayments()) {
-                        newTotal += p.getTotalAmount();
-                    }
-                    
-                    billing.setAmount(newTotal);
-                    database.updateBilling(billing.getBillingId(), "amount", newTotal + "");
+                    // update billing amount
+                    // NOTE: Billing.updatePayment() calculates the new total amount
+                    // so theres no need to manually calculate it
+                    billing.updatePayment(updatedPayment);
+                    database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
                 }
                 
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!updated) {
-                        ErrorDialog.show("0x0005", "Failed to update payment.");
+                        ErrorDialog.show("Database Error", "Failed to update payment.");
                     } else {
-                        billingsController.updatePayment(updatedPayment);
+//                        billingsController.updateBillingRow(billing);
+//                        billingsController.updatePaymentRow(updatedPayment);
+                        billingsController.updateBillingTable();
                     }
                 });
             } catch (SQLException ex) {
@@ -203,5 +193,13 @@ public class EditItemController extends Controller {
         newPayment.setTotalAmount(Double.parseDouble(tfTotal.getText().trim()));
         
         return newPayment;
+    }
+    
+    private void clearFields() {
+        tfName.clear();
+        tfPrice.clear();
+        tfStock.clear();
+        spQuantity.getValueFactory().setValue(1);
+        tfTotal.clear();
     }
 }

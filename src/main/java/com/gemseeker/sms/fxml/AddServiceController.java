@@ -3,7 +3,7 @@ package com.gemseeker.sms.fxml;
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Database;
-import com.gemseeker.sms.data.Product;
+import com.gemseeker.sms.data.Service;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
@@ -22,27 +22,26 @@ import javafx.stage.Stage;
  *
  * @author gemini1991
  */
-public class AddProductController extends Controller {
+public class AddServiceController extends Controller {
 
     @FXML TextField tfName;
     @FXML TextField tfPrice;
-    @FXML TextField tfCount;
-    @FXML TextArea taDescription;
-    @FXML Button btnCancel;
+    @FXML TextArea taDesc;
     @FXML Button btnSave;
+    @FXML Button btnCancel;
     
     private Stage stage;
     private Scene scene;
     
     private final InventoryController inventoryController;
     
-    public AddProductController(InventoryController inventoryController) {
+    public AddServiceController(InventoryController inventoryController) {
         this.inventoryController = inventoryController;
     }
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
-        Utils.setAsNumericalTextFields(tfPrice, tfCount);
+        Utils.setAsNumericalTextFields(tfPrice);
         
         btnCancel.setOnAction(evt -> {
             if (stage != null) stage.close();
@@ -57,20 +56,10 @@ public class AddProductController extends Controller {
         });
     }
 
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask(); 
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume(); 
-    }
-
     public void show() {
         if (stage == null) {
             stage = new Stage();
-            stage.setTitle("Add Product");
+            stage.setTitle("Add Service");
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.setAlwaysOnTop(true);
             
@@ -86,21 +75,20 @@ public class AddProductController extends Controller {
     
     private boolean fieldsValidated() {
         return !tfName.getText().isEmpty() &&
-                !tfPrice.getText().isEmpty() &&
-                !tfCount.getText().isEmpty();
+                !tfPrice.getText().isEmpty();
     }
     
     private void save() {
         ProgressBarDialog.show();
-        Product product = getProductInfo();
+        Service service = getServiceInfo();
         Thread t = new Thread(() -> {
             try {
                 Database database = Database.getInstance();
-                boolean added = database.addProduct(product);
+                boolean added = database.addService(service);
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!added) {
-                        ErrorDialog.show("Database Error", "Failed to add product entry to the database.");
+                        ErrorDialog.show("Database Error", "Failed to add service entry to the database.");
                     }
                 });
             } catch (SQLException ex) {
@@ -114,12 +102,11 @@ public class AddProductController extends Controller {
         t.start();
     }
     
-    private Product getProductInfo() {
-        Product product = new Product();
-        product.setName(tfName.getText());
-        product.setPrice(Double.parseDouble(tfPrice.getText()));
-        product.setCount(Integer.parseInt(tfCount.getText()));
-        product.setDescription(taDescription.getText());
-        return product;
+    private Service getServiceInfo() {
+        Service service = new Service();
+        service.setName(tfName.getText());
+        service.setEstPrice(Double.parseDouble(tfPrice.getText()));
+        service.setDescription(taDesc.getText());
+        return service;
     }
 }

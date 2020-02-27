@@ -53,8 +53,42 @@ and open the template in the editor.
     -fx-font-size: 12px;
 }
 
-.sales-box-v1 {
-    -fx-background-color: #15807e;
-    -fx-padding: 8px;
-    -fx-spacing: 4px;
+.count-box {
+    -fx-background-radius: 8px;
+}
+
+.count-box .label {
+    -fx-text-fill: #ffffff;
+}
+
+.count-box-v1 {
+    -fx-background-color: #50b88e;
+}
+
+.mlabel {
+    -fx-text-fill: #999999;
+}
+
+/*
+    Table Styles
+*/
+.table-cell-right-align {
+    -fx-alignment: CENTER-RIGHT;
+}
+.table-cell-center-align {
+    -fx-alignment: CENTER;
+}
+
+/*
+    Dialogs
+*/
+.dialog-header-text {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+.dialog-content-text {
+    -fx-font-size: 14px;
+}
+.dialog-button-group {
+    -fx-background-color: #e1e1e1;
 }

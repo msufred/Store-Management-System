@@ -1,4 +1,4 @@
-package com.gemseeker.sms.core.data;
+package com.gemseeker.sms.data;
 
 /**
  *

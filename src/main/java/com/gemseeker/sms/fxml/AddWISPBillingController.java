@@ -2,11 +2,15 @@ package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
-import com.gemseeker.sms.core.data.EnumBillingType;
+import static com.gemseeker.sms.data.EnumBillingStatus.*;
+import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.EnumBillingStatus;
+import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.data.Payment;
+import com.gemseeker.sms.data.Service;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.PaymentListCellFactory;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
@@ -29,6 +33,8 @@ import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
@@ -45,12 +51,13 @@ public class AddWISPBillingController extends Controller {
     @FXML ChoiceBox<Account> cbAccounts;
     @FXML DatePicker dateFrom;
     @FXML DatePicker dateTo;
-    @FXML ComboBox<String> cbPaymentType;
+    @FXML ComboBox<Service> cbPaymentType;
     @FXML TextField tfData;
+    @FXML TextField tfMonthlyPayment;
     @FXML TextField tfBalance;
     @FXML TextField tfDesc;
     @FXML TextField tfAmount;
-    @FXML TextField tfQuantity;
+    @FXML Spinner<Integer> spQuantity;
     @FXML Button btnAdd;
     @FXML ListView<Payment> listPayments;
     @FXML TextField tfTotal;
@@ -58,7 +65,7 @@ public class AddWISPBillingController extends Controller {
     @FXML Button btnSaveOnly;
     @FXML Button btnCancel;
     @FXML DatePicker dueDate;
-    @FXML ChoiceBox<String> cbStatus;
+    @FXML ChoiceBox<EnumBillingStatus> cbStatus;
     
     private final BillingsController billingsController;
     
@@ -69,27 +76,30 @@ public class AddWISPBillingController extends Controller {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         // set numerical textfields
-        Utils.setAsNumericalTextFields(tfAmount, tfQuantity);
+        Utils.setAsNumericalTextFields(tfAmount);
+        
+        spQuantity.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100));
         
         cbAccounts.valueProperty().addListener((ov, t, t1) -> {
             if (t1 != null) {
                 Platform.runLater(() -> {
                     btnSavePrint.setDisable(false);
                     btnSaveOnly.setDisable(false);
-                    tfData.setText(String.valueOf(t1.getDataPlan()));
-                    // TODO show balance...
+                    showDetails(t1);
                 });
             }
         });
         
-        cbPaymentType.setItems(FXCollections.observableArrayList(
-                "Data Plan", "Installation", "Re-installation", "Beaming", "Others"
-        ));
+        cbPaymentType.valueProperty().addListener((ov, s1, s2) -> {
+            if (s2 != null) {
+                tfAmount.setText(s2.getEstPrice() + "");
+            }
+        });
         
         listPayments.setCellFactory(new PaymentListCellFactory());
         
         cbStatus.setItems(FXCollections.observableArrayList(
-                "For Payment", "Paid", "Overdue"
+                FOR_REVIEW, FOR_PAYMENT, PAID, OVERDUE
         ));
         cbStatus.getSelectionModel().select(0);
         
@@ -103,12 +113,12 @@ public class AddWISPBillingController extends Controller {
                 // clear fields
                 cbPaymentType.getSelectionModel().select(-1);
                 tfAmount.clear();
-                tfQuantity.clear();
+                spQuantity.getValueFactory().setValue(1);
             }
         });
         
         btnSavePrint.setOnAction(evt -> {
-            ErrorDialog.show("0x0001", "Feature not implemented yet.");
+            ErrorDialog.show("Uh-oh!", "Feature not implemented yet.");
         });
         
         btnSaveOnly.setOnAction(evt -> {
@@ -129,6 +139,11 @@ public class AddWISPBillingController extends Controller {
         super.onLoadTask(); 
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+    }
+
     public void show() {
         clearFields();
         if (stage == null) {
@@ -140,25 +155,60 @@ public class AddWISPBillingController extends Controller {
         }
         stage.show();
         loadAccounts();
+        loadServices();
     }
     
     public void close() {
         if (stage != null) stage.close();
     }
     
+    private void loadServices() {
+        ProgressBarDialog.show();
+        Thread t = new Thread(() -> {
+            try {
+                Database database = Database.getInstance();
+                ArrayList<Service> services = database.getAllServices();
+                Service dataplan = new Service();
+                dataplan.setName("Data Plan");
+                dataplan.setEstPrice(0);
+                services.add(0, dataplan);
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    cbPaymentType.setItems(FXCollections.observableArrayList(services));
+                });
+            } catch (SQLException ex) {
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
+                });
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+    
     private void clearFields() {
         cbAccounts.getSelectionModel().select(-1);
         tfData.clear();
+        tfMonthlyPayment.clear();
         tfBalance.clear();
         tfDesc.clear();
         dateFrom.getEditor().clear();
         dateTo.getEditor().clear();
         cbPaymentType.getSelectionModel().select(-1);
         tfAmount.clear();
-        tfQuantity.clear();
+        spQuantity.getValueFactory().setValue(1);
         listPayments.getItems().clear();
         tfTotal.clear();
         dueDate.getEditor().clear();
+    }
+    
+    private void showDetails(Account account) {
+        InternetSubscription isub = account.getInternetSubscription();
+        if(isub != null) {
+            tfData.setText(isub.getBandwidth() + " mbps");
+            tfMonthlyPayment.setText("Php " + isub.getAmount());
+        }
     }
     
     private void loadAccounts() {
@@ -175,18 +225,18 @@ public class AddWISPBillingController extends Controller {
     private Payment getPaymentInfo() {
         Payment payment = new Payment();
         
-        String name = cbPaymentType.getValue();
-        payment.setName(name);
+        Service service = cbPaymentType.getValue();
+        if (service != null) {
+            payment.setName(service.getName());
+        } else {
+            payment.setName("< Not Set >");
+        }
         
         String amountStr = tfAmount.getText();
         double amount = Double.parseDouble(amountStr);
         payment.setAmount(amount);
         
-        String qtyStr = tfQuantity.getText();
-        int qty = 0;
-        if (!qtyStr.isEmpty()) {
-            qty = Integer.parseInt(qtyStr);
-        }
+        int qty = spQuantity.getValueFactory().getValue();
         payment.setQuantity(qty);
         
         
@@ -209,19 +259,17 @@ public class AddWISPBillingController extends Controller {
     
     private void save() {
         ProgressBarDialog.show();
+        Billing billing = getBillingInfo();
         Thread t = new Thread(() -> {
             try {
                 Database database = Database.getInstance();
-                Billing billing = getBillingInfo();
-                if (billing != null) {
-                    boolean added = database.addBilling(billing);
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        if (!added) {
-                            ErrorDialog.show("0x0002", "Failed to add new billing entry.");
-                        }
-                    });
-                }
+                boolean added = database.addBilling(billing);
+                Platform.runLater(() -> {
+                    ProgressBarDialog.close();
+                    if (!added) {
+                        ErrorDialog.show("Database Error", "Failed to add new billing entry.");
+                    }
+                });
             } catch (SQLException ex) {
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
@@ -240,7 +288,7 @@ public class AddWISPBillingController extends Controller {
         if (acct == null) return null;
         
         billing.setAccountNo(acct.getAccountNumber());
-        billing.setAmount(Double.parseDouble(tfTotal.getText()));
+//        billing.setAmount(Double.parseDouble(tfTotal.getText()));
         billing.setBillingDate(Calendar.getInstance(Locale.getDefault()).getTime());
         try {
             Date dFrom = Utils.DATE_FORMAT_2.parse(dateFrom.getEditor().getText());
@@ -248,10 +296,14 @@ public class AddWISPBillingController extends Controller {
             Date dTo = Utils.DATE_FORMAT_2.parse(dateTo.getEditor().getText());
             billing.setToDate(dTo);
         } catch (ParseException e) {
-            ErrorDialog.show("0x0004", "Failed to parse date.");
+            ErrorDialog.show("Date Parsing Error", e.toString());
         }
         billing.setDueDate(dueDate.getEditor().getText());
         billing.setStatus(cbStatus.getValue());
+        
+        // NOTE: No need to set the total amount here since the Billing object
+        // will automatically (in a sense) calculate it. Just add the Payments
+        // and the total amount is calculated. :)
         for (Payment p : listPayments.getItems()) {
             billing.addPayment(p);
         }

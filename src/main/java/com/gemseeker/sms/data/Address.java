@@ -1,19 +1,33 @@
 package com.gemseeker.sms.data;
 
+import com.gemseeker.sms.core.data.IEntry;
+
 /**
  *
  * @author gemini1991
  */
-public class Address {
+public class Address implements IEntry {
 
-    private String street, barangay, city;
-
-    public String getStreet() {
-        return street;
+    private String accountNo;
+    private String landmark; // building/lot/street/sitio etc
+    private String barangay;
+    private String city;
+    private String province;
+    
+    public void setAccountNo(String accountNo) {
+        this.accountNo = accountNo;
+    }
+    
+    public String getAccountNo() {
+        return accountNo;
     }
 
-    public void setStreet(String street) {
-        this.street = street;
+    public String getLandmark() {
+        return landmark;
+    }
+
+    public void setLandmark(String landmark) {
+        this.landmark = landmark;
     }
 
     public String getBarangay() {
@@ -31,10 +45,25 @@ public class Address {
     public void setCity(String city) {
         this.city = city;
     }
+
+    public String getProvince() {
+        return province;
+    }
+
+    public void setProvince(String province) {
+        this.province = province;
+    }
     
     @Override
     public String toString() {
-        return String.format("%s, %s, %s", street, barangay, city);
+        return String.format("%s, %s, %s, %s", landmark, barangay, city, province);
+    }
+
+    @Override
+    public String generateSQLInsert() {
+        return String.format("INSERT INTO `addresses` ("
+                + "`account_no`, `province`, `city`, `barangay`, `landmark`) VALUES ("
+                + "'%s', '%s', '%s', '%s', '%s')", accountNo, province, city, barangay, landmark);
     }
     
 }

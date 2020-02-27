@@ -1,8 +1,13 @@
 package com.gemseeker.sms;
 
+import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.fxml.MainController;
+import com.gemseeker.sms.fxml.components.ErrorDialog;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javafx.application.Application;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -22,7 +27,8 @@ import javafx.stage.Stage;
  */
 public class AppMain extends Application implements Initializable {
 
-    private static final int WIDTH = 1000;
+    private static final String TITLE = "LIVErary IT Solutions";
+    private static final int WIDTH = 1280;
     private static final int HEIGHT = 700;
 
     // login
@@ -49,7 +55,15 @@ public class AppMain extends Application implements Initializable {
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         stage.setScene(scene);
 //        stage.setMaximized(true);
-        stage.setTitle("LIVErary IT Solutions");
+        stage.setTitle(TITLE);
+        stage.setOnCloseRequest(evt -> {
+            try {
+                Database database = Database.getInstance();
+                database.close();
+            } catch (SQLException ex) {
+                ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
+            }
+        });
         stage.show();
 
         loadPanels();

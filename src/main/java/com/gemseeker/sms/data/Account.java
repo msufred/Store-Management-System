@@ -1,117 +1,92 @@
 package com.gemseeker.sms.data;
 
 import com.gemseeker.sms.Utils;
-import com.gemseeker.sms.core.IAccount;
-import com.gemseeker.sms.core.data.EnumAccountStatus;
 import com.gemseeker.sms.core.data.IEntry;
+import java.util.ArrayList;
 import java.util.Date;
 
 /**
  *
  * @author gemini1991
  */
-public class Account implements IAccount, IEntry {
+public class Account implements IEntry {
 
     private String accountNumber;
     private String firstName; // name of account user
     private String lastName;
-    private Address address;
     private String contactNumber; 
     private Date dateRegistered;
     private EnumAccountStatus status; // current account status
-    
-    // custom variables (internet provider)
-    private int dataPlan; // i.e., 10 mbps=10
-    private Date dueDate;
     private Date lastDatePaid;
-
-    @Override
+    private EnumAccountType accountType;
+    
+    private Address address;
+    private InternetSubscription internetSubscription;
+    
     public void setAccountNumber(String accountNo) {
         this.accountNumber = accountNo;
     }
     
-    @Override
     public void setAccountUserName(String lastName, String firstName) {
         this.lastName = lastName;
         this.firstName = firstName;
     }
     
-    @Override
     public void setFirstName(String firstName) {
         this.firstName = firstName;
     }
 
-    @Override
     public void setLastName(String lastName) {
         this.lastName = lastName;
     }
     
-    @Override
     public void setAddress(Address address) {
+        if (address != null) {
+            address.setAccountNo(accountNumber);
+        }
         this.address = address;
     }
 
-    @Override
     public void setContactNumber(String contact) {
         this.contactNumber = contact;
     }
     
-    @Override
     public void setDateRegistered(Date date) {
         this.dateRegistered = date;
     }
 
-    @Override
-    public void setDataPlan(int mbps) {
-        this.dataPlan = mbps;
-    }
-
-    @Override
     public void setStatus(EnumAccountStatus status) {
         this.status = status;
     }
 
-    @Override
     public String getAccountNumber() {
         return accountNumber;
     }
     
-    @Override
     public String[] getAccountUserName() {
         return new String[]{firstName, lastName};
     }
     
-    @Override
     public String getFirstName() {
         return firstName;
     }
     
-    @Override
     public String getLastName() {
         return lastName;
     }
 
-    @Override
     public Address getAddress() {
         return address;
     }
     
-    @Override
     public String getContactNumber() {
         return contactNumber;
     }
     
-    @Override
     public Date getDateRegistered() {
         return dateRegistered;
     }
 
-    @Override
-    public int getDataPlan() {
-        return dataPlan;
-    }
-
-    @Override
     public EnumAccountStatus getStatus() {
         return status;
     }
@@ -123,35 +98,53 @@ public class Account implements IAccount, IEntry {
     public Date getLastDatePaid() {
         return lastDatePaid;
     }
-
+        
+    public void setInternetSubscription(InternetSubscription sub) {
+        if (sub != null) {
+            sub.setAccountNo(accountNumber);
+        }
+        internetSubscription = sub;
+    } 
+    
+    public InternetSubscription getInternetSubscription() {
+        return internetSubscription;
+    }
+    
+    public void setAccountType(EnumAccountType acctType) {
+        this.accountType = acctType;
+    }
+    
+    public EnumAccountType getAccountType() {
+        return accountType;
+    }
+    
     @Override
     public String generateSQLInsert() {
-        return String.format("INSERT INTO `accounts` ("
-                + "`account_no`, "      // 1
-                + "`firstname`, "       // 2
-                + "`lastname`, "        // 3
-                + "`street`, "          // 4
-                + "`barangay`, "        // 5
-                + "`city`, "            // 6
-                + "`contact_no`, "      // 7
-                + "`data_plan`, "       // 8
-                + "`status`, "          // 9
-                + "`date_registered`" // 10
-                + ") VALUES ("
-                + "'%s', "              // 1
-                + "'%s', "              // 2
-                + "'%s', "              // 3
-                + "'%s', "              // 4
-                + "'%s', "              // 5
-                + "'%s', "              // 6
-                + "'%s', "              // 7
-                + "'%s', "              // 8
-                + "'%s', "              // 9
-                + "'%s'"              // 10
-                + ")",
-                accountNumber, firstName, lastName, address.getStreet(),
-                address.getBarangay(), address.getCity(), contactNumber, dataPlan,
-                String.valueOf(status), Utils.MYSQL_DATETIME_FORMAT.format(dateRegistered));
+        StringBuilder sb = new StringBuilder(
+            "INSERT INTO `accounts` ("
+                    + "`account_no`, "      // 1
+                    + "`firstname`, "       // 2
+                    + "`lastname`, "        // 3
+                    + "`contact_no`, "      // 4
+                    + "`status`, "          // 5
+                    + "`date_registered`, " // 6
+        );
+        if (lastDatePaid != null) {
+            sb.append("`last_date+paid`, ");
+        }
+        sb.append("`type`) VALUES (");
+        sb.append("'").append(accountNumber).append("', ");
+        sb.append("'").append(firstName).append("', ");
+        sb.append("'").append(lastName).append("', ");
+        sb.append("'").append(contactNumber).append("', ");
+        sb.append("'").append(status.toString()).append("', ");
+        sb.append("'").append(Utils.MYSQL_DATETIME_FORMAT.format(dateRegistered)).append("', ");
+        if (lastDatePaid != null) {
+            sb.append("'").append(Utils.MYSQL_DATETIME_FORMAT.format(lastDatePaid)).append("', ");
+        }
+        sb.append("'").append(accountType.toString()).append("')");
+
+        return sb.toString();
     }
     
     @Override

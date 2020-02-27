@@ -4,19 +4,36 @@ CREATE TABLE `billings`.`accounts` (
   `account_no` VARCHAR(8) NOT NULL,
   `firstname` VARCHAR(45) NOT NULL,
   `lastname` VARCHAR(45) NOT NULL,
-  `street` VARCHAR(45) NULL,
-  `barangay` VARCHAR(45) NULL,
-  `city` VARCHAR(45) NULL,
-  `contact_no` VARCHAR(12) NULL,
-  `data_plan` INT NOT NULL,
-  `status` VARCHAR(10) NULL,
+  `address` LONGTEXT NOT NULL,
+  `contact_no` VARCHAR(12) NOT NULL,
+  `status` VARCHAR(10) NOT NULL,
   `date_registered` DATETIME NOT NULL,
   `last_date_paid` DATETIME NULL,
+  `type` VARCHAR(45) NOT NULL DEFAULT 'Personal',
   PRIMARY KEY (`account_no`));
 
+/*
+`addresses` entries will be removed if their parent table entry is deleted.
+*/
+CREATE TABLE `billings`.`addresses` (
+  `account_no` VARCHAR(8) NOT NULL,
+  `province` LONGTEXT NOT NULL,
+  `city` LONGTEXT NOT NULL,
+  `barangay` LONGTEXT NOT NULL,
+  `landmark` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`account_no`),
+  CONSTRAINT `acct_no3`
+    FOREIGN KEY (`account_no`)
+    REFERENCES `billings`.`accounts` (`account_no`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE);
+
+/*
+We will set the `account_no` to NULL if the parent table entry is deleted.
+*/
 CREATE TABLE `billings`.`billings` (
   `billing_no` INT NOT NULL AUTO_INCREMENT,
-  `account_no` VARCHAR(8) NOT NULL,
+  `account_no` VARCHAR(8) NULL, 
   `amount` DOUBLE NOT NULL,
   `billing_date` DATETIME NOT NULL,
   `from_date` VARCHAR(45),
@@ -30,8 +47,8 @@ CREATE TABLE `billings`.`billings` (
   CONSTRAINT `account_no`
     FOREIGN KEY (`account_no`)
     REFERENCES `billings`.`accounts` (`account_no`)
-    ON DELETE NO ACTION
-    ON UPDATE CASCADE);
+    ON DELETE SET NULL
+	ON UPDATE CASCADE);
 
 CREATE TABLE `billings`.`payments` (
   `payment_no` INT NOT NULL AUTO_INCREMENT,
@@ -71,4 +88,27 @@ CREATE TABLE `billings`.`products` (
   `count` INT NOT NULL DEFAULT 0,
   `description` LONGTEXT NULL,
   PRIMARY KEY (`product_no`));
-
+  
+CREATE TABLE `billings`.`services` (
+  `service_no` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(45) NOT NULL,
+  `est_price` DOUBLE NULL,
+  `description` LONGTEXT NULL,
+  PRIMARY KEY (`service_no`));
+  
+CREATE TABLE `billings`.`internet_subscriptions` (
+  `subscription_no` INT NOT NULL AUTO_INCREMENT,
+  `account_no` VARCHAR(8) NOT NULL,
+  `bandwidth` INT NOT NULL DEFAULT 0,
+  `amount` DOUBLE NOT NULL DEFAULT 0.0,
+  `ip_address` VARCHAR(45) NULL,
+  `latitude` FLOAT NULL DEFAULT 0,
+  `longitude` FLOAT NULL DEFAULT 0,
+  `elevation` FLOAT NULL DEFAULT 0,
+  PRIMARY KEY (`subscription_no`),
+  INDEX `acct_no2_idx` (`account_no` ASC) VISIBLE,
+  CONSTRAINT `acct_no2`
+    FOREIGN KEY (`account_no`)
+    REFERENCES `billings`.`accounts` (`account_no`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE);
