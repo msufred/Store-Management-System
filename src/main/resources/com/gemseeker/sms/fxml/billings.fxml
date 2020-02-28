@@ -58,7 +58,7 @@
             <MenuButton mnemonicParsing="false" text="Print">
               <items>
                 <MenuItem mnemonicParsing="false" text="Billing Statement" />
-                <MenuItem mnemonicParsing="false" text="Notification" />
+                <MenuItem fx:id="miNotify" mnemonicParsing="false" text="Notification" />
               </items>
             </MenuButton>
             <Separator orientation="VERTICAL">

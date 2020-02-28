@@ -10,7 +10,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 /**
  *
  * @author gemini1991
@@ -75,6 +74,63 @@ public class Database {
     public static Database getInstance() throws SQLException {
         if (instance == null) instance = new Database();
         return instance;
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                               USERS                               |
+    |                                                                   |
+    *===================================================================*/
+    
+    public User getUser(String username, String password) {
+        if (connection != null && isOpen) {
+            Statement s = null;
+            ResultSet rs = null;
+            try {
+                s = connection.createStatement();
+                rs = s.executeQuery("SELECT * FROM `users` WHERE `username`='" +
+                        username + "' AND `password`='" + password + "'");
+                if (rs.next()) {
+                    User user = new User();
+                    user.setUserId(rs.getInt(1));
+                    user.setUserName(rs.getString(2));
+                    user.setPassword(rs.getString(3));
+                    user.setAuthority(rs.getString(4));
+                    return user;
+                }
+            } catch (SQLException e) {
+                System.err.println("Error while fetching user from database.\n" + e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                    if (rs != null) rs.close();
+                } catch (SQLException e) {
+                    System.err.println("Failed to close statement and result set.\n" + e);
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    public boolean addUser(User user) {
+        if (connection != null && isOpen) {
+            Statement s = null;
+            try {
+                s = connection.createStatement();
+                int n = s.executeUpdate(user.generateSQLInsert());
+                return n > 0;
+            } catch (SQLException e) {
+                System.err.println("Error while adding user entry to database.\n" + e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close Statement object. \n" + ex);
+                }
+            }
+        }
+        return false;
     }
     
     /*==================================================================*
@@ -263,6 +319,9 @@ public class Database {
         
         // fetch internet subscriptions
         account.setInternetSubscription(getInternetSubscription(account.getAccountNumber()));
+        
+        // fetch balances
+        account.setBalances(getBalanceByAccountNo(account.getAccountNumber()));
         
         return account;
     }
@@ -554,6 +613,99 @@ public class Database {
         Account account = getAccount(billing.getAccountNo());
         billing.setAccount(account);
         return billing;
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                       BILLINGS PROCESSED                          |
+    |                                                                   |
+    *===================================================================*/
+    
+    public int addBillingProcessed(BillingProcessed billingProcessed) {
+        if (connection != null && isOpen) {
+            Statement s = null;
+            ResultSet rsKey = null;
+            try {
+                s = connection.createStatement();
+                int n = s.executeUpdate(billingProcessed.generateSQLInsert(), Statement.RETURN_GENERATED_KEYS);
+                if (n > 0) {
+                    rsKey = s.getGeneratedKeys();
+                    if (rsKey.next()) {
+                        return rsKey.getInt(1);
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("Error while adding billing processed entry to database.\n" + e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                    if (rsKey != null) rsKey.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close Statement object. \n" + ex);
+                }
+            }
+        }
+        return -1;
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                               BALANCES                            |
+    |                                                                   |
+    *===================================================================*/
+    
+    public ArrayList<Balance> getBalanceByAccountNo(String accountNo) {
+        ArrayList<Balance> balances = new ArrayList<>();
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            Statement s = null;
+            try {
+                s = connection.createStatement();
+                rs = s.executeQuery("SELECT * FROM `balances` WHERE `account_no`='" + accountNo + "'");
+                while(rs.next()) {
+                    Balance b = new Balance();
+                    b.setBalanceNo(rs.getInt(1));
+                    b.setBillingProcessedNo(rs.getInt(2));
+                    b.setAmount(rs.getDouble(3));
+                    b.setIsPaid(Boolean.parseBoolean(rs.getString(4)));
+                    String dateStr = rs.getString(5);
+                    if (dateStr != null && !dateStr.isEmpty()) {
+                        b.setDatePaid(Utils.MYSQL_DATETIME_FORMAT.parse(dateStr));
+                    }
+                    balances.add(b);
+                }
+            } catch (SQLException | ParseException e) {
+                System.err.println("Error while adding billing processed entry to database.\n" + e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                    if (rs != null) rs.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close Statement object. \n" + ex);
+                }
+            }
+        }
+        return balances;
+    }
+    
+    public boolean addBalance(Balance balance) {
+        if (connection != null && isOpen) {
+            Statement s = null;
+            try {
+                s = connection.createStatement();
+                int n = s.executeUpdate(balance.generateSQLInsert());
+                return n > 0;
+            } catch (SQLException e) {
+                System.err.println("Error while adding balance entry to database.\n" + e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close Statement object. \n" + ex);
+                }
+            }
+        }
+        return false;
     }
      
     /*==================================================================*

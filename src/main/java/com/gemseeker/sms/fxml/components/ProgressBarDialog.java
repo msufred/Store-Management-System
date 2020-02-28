@@ -29,7 +29,7 @@ public class ProgressBarDialog {
         vbox.setSpacing(8);
         vbox.getChildren().add(progressBar);
         stage = new Stage();
-        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.setAlwaysOnTop(true);
         stage.initStyle(StageStyle.UNDECORATED);
         Scene scene = new Scene(vbox);
         stage.setScene(scene);

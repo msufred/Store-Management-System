@@ -60,6 +60,7 @@ public class BillingsController extends Controller {
     @FXML MenuItem miExtendDueDateItem;
     @FXML MenuItem miDeliverOrder;
     @FXML MenuItem miCancelOrder;
+    @FXML MenuItem miNotify;
     @FXML ComboBox<String> cbFilterType;
     @FXML ComboBox<String> cbFilterStatus;
     
@@ -93,6 +94,12 @@ public class BillingsController extends Controller {
     private EditItemController editItemController;
     private AddWispController addWispController;
     
+    // WISP specific dialogs
+    private ChangeDueDateController changeDueDateController;
+    private AcceptPaymentController acceptPaymentController;
+    
+    private PrintNoticeController printNoticeController;
+    
     private int mCurrentBillingIndex = -1; // current selected Billing entry in table
     private int mLastBillingIndex = -1; // holds the last index selected (can be used after refresh)
     
@@ -107,15 +114,27 @@ public class BillingsController extends Controller {
         editItemController = new EditItemController(this);
         addWispController = new AddWispController(this);
         
+        changeDueDateController = new ChangeDueDateController(this);
+        acceptPaymentController = new AcceptPaymentController(this);
+        
+        printNoticeController = new PrintNoticeController(this);
+        
         Loader loader = Loader.getInstance();
         loader.load("fxml/add_wisp_billing.fxml", addWISPBillingController);
         loader.load("fxml/edit_wisp_billing.fxml", editWISPBillingController);
         loader.load("fxml/add_item_billing.fxml", addItemBillingController);
+        
         loader.load("fxml/add_item.fxml", addItemController);
         loader.load("fxml/edit_item.fxml", editItemController);
         loader.load("fxml/add_wisp.fxml", addWispController);
+        
+        loader.load("fxml/change_due_date.fxml", changeDueDateController);
+        loader.load("fxml/accept_payment.fxml", acceptPaymentController);
+        
+        loader.load("fxml/notice.fxml", printNoticeController);
     }
 
+    // <editor-fold defaultstate="collapsed" desc="Initialize Method">
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         // billings table and columns
@@ -166,22 +185,35 @@ public class BillingsController extends Controller {
         miAddWISPBilling.setOnAction(evt -> showAddWISPBilling());
         miAddItemBilling.setOnAction(evt -> showAddItemBilling());
         
-        // WISP actions
+        // WISP specific actions
         miForPaymentWISP.setOnAction(evt -> {
             Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
             changeBillingForPayment(billing);
+        });
+        miExtendDueDateWISP.setOnAction(evt -> {
+            Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+            changeDueDate(billing);
+        });
+        miReceivePaymentWISP.setOnAction(evt -> {
+            Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+            acceptPayment(billing);
         });
         
         btnEdit.setOnAction(evt -> editBilling());
         btnDelete.setOnAction(evt -> deleteBilling());
         btnRefresh.setOnAction(evt -> refresh());
         
+        miNotify.setOnAction(evt -> {
+            printNotification();
+        });
+        
         // details group
         btnAddItem.setOnAction(evt -> showAddPayment());
         btnEditItem.setOnAction(evt -> editBillingPaymentItem());
         btnDeleteItem.setOnAction(evt -> deletePayment());
     }
-
+    // </editor-fold>
+    
     @Override
     public void onResume() {
         super.onResume(); 
@@ -201,8 +233,6 @@ public class BillingsController extends Controller {
                     // select last selected billing
                     if (mLastBillingIndex > -1) {
                         billingsTable.getSelectionModel().select(mLastBillingIndex);
-                        Billing billing = billingsTable.getItems().get(mLastBillingIndex);
-//                        displaySelectedBilling(billing);
                     }
                 });
             } catch (SQLException ex) {
@@ -250,6 +280,11 @@ public class BillingsController extends Controller {
         }
     }
     
+    
+    /* ======================================================================= */
+    /*                       Billing Actions (WISP & Item)                     */
+    /* ======================================================================= */
+    
     /**
      * Change the status of Billing to For Payment.
      * @param billing 
@@ -264,7 +299,8 @@ public class BillingsController extends Controller {
                             doChangeBillingStatus(billing, FOR_PAYMENT);
                         });
             } else {
-                InfoDialog.show("Oh Snap!", "You can't change the status of this billing entry!");
+                InfoDialog.show("Can't Update Billing", "The status of this billing doesn't allow it "
+                        + "to be updated!");
             }
         }
     }
@@ -293,6 +329,48 @@ public class BillingsController extends Controller {
         t.start();
     }
     
+    private void changeDueDate(Billing billing) {
+        if (billing != null) {
+            EnumBillingStatus status = billing.getStatus();
+            if (status != PAID && status != CANCELLED) {
+                if (changeDueDateController != null) {
+                    if (!changeDueDateController.isLoaded()) changeDueDateController.onLoadTask();
+                    changeDueDateController.show(billing);
+                }
+            } else {
+                InfoDialog.show("Unable to Change Due Date", "This billing is either paid or cancelled.");
+            }
+        }
+    }
+    
+    private void acceptPayment(Billing billing) {
+        if (billing != null) {
+            EnumBillingStatus status = billing.getStatus();
+            if (status != PAID && status != CANCELLED) {
+                if (!acceptPaymentController.isLoaded()) acceptPaymentController.onLoadTask();
+                acceptPaymentController.show(billing);
+            } else {
+                InfoDialog.show("Can't Accept Payment", "This billing is either paid or cancelled.");
+            }
+        }
+    }
+    
+    private void printNotification() {
+        Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+        if (billing != null) {
+            EnumBillingStatus status = billing.getStatus();
+            if (status != PAID || status != CANCELLED) {
+                if (!printNoticeController.isLoaded()) printNoticeController.onLoadTask();
+                printNoticeController.show(billing);
+            }
+        }
+    }
+    
+    /* ======================================================================= */
+    /*                                  END                                    */
+    /* ======================================================================= */    
+    
+  
     private void editBilling() {
         Billing selected = billingsTable.getSelectionModel().getSelectedItem();
         if (selected != null) {
@@ -354,7 +432,7 @@ public class BillingsController extends Controller {
                     Platform.runLater(() -> {
                         ProgressBarDialog.close();
                         if (!deleted) {
-                            ErrorDialog.show("0x0003", "Failed to delete entry.");
+                            ErrorDialog.show("Delete Billing Error", "Failed to delete entry.");
                         }
                         refresh();
                     });

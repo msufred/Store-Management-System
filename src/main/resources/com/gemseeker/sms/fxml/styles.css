@@ -92,3 +92,43 @@ and open the template in the editor.
 .dialog-button-group {
     -fx-background-color: #e1e1e1;
 }
+
+/*
+    List Cell Style
+*/
+.list-column-1 {
+    -fx-background-color: #ffffff;
+}
+
+.list-column-2 {
+    -fx-background-color: #e1e1e1;
+}
+
+/*
+    Notice Form
+*/
+.notice-form {
+    -fx-background-color: #50b88e;
+}
+.notice-content-group {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 16px;
+}
+.notice-text {
+    -fx-font-size: 24px;
+    -fx-text-fill:#eb7171;
+    -fx-font-weight: bold;
+}
+.notice-table {
+    
+}
+.notice-table .column-header,
+.notice-table .column-header .filler,
+.notice-table .column-header-background .filler {
+    -fx-background-color: #50b88e;
+}
+.notice-table .table-cell,
+.notice-table .table-cell .filler,
+.notice-table .virtual-flow .table-row-cell:focused:odd:empty {
+    -fx-background-color: #ffffff;
+}

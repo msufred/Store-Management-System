@@ -67,7 +67,7 @@ CREATE TABLE `billings`.`payments` (
     ON UPDATE CASCADE);
     
 CREATE TABLE `billings`.`billings_processed` (
-  `id` INT NOT NULL,
+  `id` INT NOT NULL AUTO_INCREMENT,
   `billing_no` INT NOT NULL,
   `amount_due` DOUBLE NOT NULL,
   `amound_paid` DOUBLE NOT NULL,
@@ -80,6 +80,40 @@ CREATE TABLE `billings`.`billings_processed` (
     REFERENCES `billings`.`billings` (`billing_no`)
     ON DELETE NO ACTION
     ON UPDATE CASCADE);
+
+CREATE TABLE `billings`.`balances` (
+  `balance_no` INT NOT NULL AUTO_INCREMENT,
+  `billing_processed_no` INT NOT NULL,
+  `account_no` VARCHAR(8) NULL,
+  `amount` DOUBLE NULL,
+  `paid` VARCHAR(5) NOT NULL DEFAULT 'false',
+  `date_paid` DATETIME NULL,
+  PRIMARY KEY (`balance_no`),
+  INDEX `billing_processed_fk_idx` (`billing_processed_no` ASC) VISIBLE,
+  INDEX `account_fk_idx` (`account_no` ASC) VISIBLE,
+  CONSTRAINT `billing_processed_fk`
+    FOREIGN KEY (`billing_processed_no`)
+    REFERENCES `billings`.`billings_processed` (`id`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `account_fk`
+    FOREIGN KEY (`account_no`)
+    REFERENCES `billings`.`accounts` (`account_no`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE);
+	
+    
+    ALTER TABLE `billings`.`balances` 
+ADD COLUMN `account_no` VARCHAR(8) NULL AFTER `billing_no`,
+ADD INDEX `account_no_fk_idx` (`account_no` ASC) VISIBLE;
+;
+ALTER TABLE `billings`.`balances` 
+ADD CONSTRAINT `account_no_fk`
+  FOREIGN KEY (`account_no`)
+  REFERENCES `billings`.`accounts` (`account_no`)
+  ON DELETE SET NULL
+  ON UPDATE CASCADE;
+
 
 CREATE TABLE `billings`.`products` (
   `product_no` INT NOT NULL AUTO_INCREMENT,

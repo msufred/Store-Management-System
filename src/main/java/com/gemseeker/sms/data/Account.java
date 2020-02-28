@@ -22,6 +22,7 @@ public class Account implements IEntry {
     
     private Address address;
     private InternetSubscription internetSubscription;
+    private ArrayList<Balance> balances = new ArrayList<>();
     
     public void setAccountNumber(String accountNo) {
         this.accountNumber = accountNo;
@@ -116,6 +117,14 @@ public class Account implements IEntry {
     
     public EnumAccountType getAccountType() {
         return accountType;
+    }
+    
+    public void setBalances(ArrayList<Balance> balances) {
+        this.balances = balances;
+    }
+    
+    public ArrayList<Balance> getBalances() {
+        return balances;
     }
     
     @Override
