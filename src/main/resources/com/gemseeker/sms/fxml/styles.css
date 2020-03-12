@@ -115,6 +115,9 @@ and open the template in the editor.
     -fx-background-radius: 16px;
 }
 .notice-text {
+    -fx-font-size: 10px;
+}
+.notice-title-text {
     -fx-font-size: 24px;
     -fx-text-fill:#eb7171;
     -fx-font-weight: bold;
@@ -126,9 +129,63 @@ and open the template in the editor.
 .notice-table .column-header .filler,
 .notice-table .column-header-background .filler {
     -fx-background-color: #50b88e;
+    -fx-font-size: 10px;
 }
 .notice-table .table-cell,
 .notice-table .table-cell .filler,
 .notice-table .virtual-flow .table-row-cell:focused:odd:empty {
     -fx-background-color: #ffffff;
+    -fx-font-size: 10px;
+}
+
+/*
+    Sales
+*/
+.summary-box {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.3), 5, 0, 0, 2);
+}
+
+.text-percentage-up {
+    -fx-text-fill: #50b88e;
+    -fx-font-weight: bold;
+}
+
+.text-label {
+    -fx-text-fill: #999999;
+}
+
+/*
+    Receipt
+*/
+
+.receipt-form {
+    -fx-background-color: #50b88e;
+}
+.receipt-content-group {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 16px;
+}
+.receipt-text {
+    -fx-font-size: 12px;
+}
+.receipt-title-text {
+    -fx-font-size: 32px;
+    -fx-font-weight: bold;
+}
+.receipt-table {
+    
+}
+.receipt-table .column-header,
+.receipt-table .column-header .filler,
+.receipt-table .column-header-background .filler {
+    -fx-background-color: #eeeeee;
+    -fx-font-size: 12px;
+}
+.receipt-table .table-cell,
+.receipt-table .table-cell .filler,
+.receipt-table .virtual-flow .table-row-cell:focused:odd:empty {
+    -fx-background-color: #ffffff;
+    -fx-font-size: 12px;
 }

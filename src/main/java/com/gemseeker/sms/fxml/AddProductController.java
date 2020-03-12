@@ -3,6 +3,7 @@ package com.gemseeker.sms.fxml;
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
@@ -97,6 +98,15 @@ public class AddProductController extends Controller {
             try {
                 Database database = Database.getInstance();
                 boolean added = database.addProduct(product);
+                if (added) {
+                    // add to history
+                    History history = new History();
+                    history.setTitle("New Product");
+                    history.setDescription(String.format("Added new product: %s, amount: Php %.2f, stock: %d", 
+                            product.getName(), product.getPrice(), product.getCount()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
+                }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!added) {

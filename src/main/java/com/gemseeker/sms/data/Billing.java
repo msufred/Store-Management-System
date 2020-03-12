@@ -167,13 +167,13 @@ public class Billing implements IEntry {
      * Billing class.
      */
     private void calculateAmount() {
+        double total = 0;
         if (payments != null) {
-            double total = 0;
             for (Payment p : payments) {
                 total += p.getTotalAmount();
             }
-            setAmount(total);
         }
+        setAmount(total);
     }
     
     @Override

@@ -2,6 +2,7 @@ package com.gemseeker.sms.data;
 
 import com.gemseeker.sms.Preferences;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.data.IEntry;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -10,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Calendar;
 /**
  *
  * @author gemini1991
@@ -20,11 +22,15 @@ public class Database {
     private Connection connection;
     private boolean isOpen;
     
+    private PreparedStatement getAllUsers;
     private PreparedStatement getAllAccounts;
     private PreparedStatement getAccountsCount;
     private PreparedStatement getAllBillings;
+    private PreparedStatement getAllRevenues;
+    private PreparedStatement getAllExpenses;
     private PreparedStatement getAllProducts;
     private PreparedStatement getAllServices;
+    private PreparedStatement getAllHistory;
     
     private Database() throws SQLException {
         Preferences pref = Preferences.getInstance();
@@ -40,11 +46,15 @@ public class Database {
         );
         isOpen = true;
         
+        getAllUsers = connection.prepareCall("SELECT * FROM `users`");
         getAllAccounts = connection.prepareCall("SELECT * FROM `accounts`");
         getAccountsCount = connection.prepareCall("SELECT COUNT(*) FROM `accounts`");
         getAllBillings = connection.prepareCall("SELECT * FROM `billings`");
+        getAllRevenues = connection.prepareCall("SELECT * FROM `revenues`");
+        getAllExpenses = connection.prepareCall("SELECT * FROM `expenses`");
         getAllProducts = connection.prepareCall("SELECT * FROM `products`");
         getAllServices = connection.prepareCall("SELECT * FROM `services`");
+        getAllHistory = connection.prepareCall("SELECT * FROM `histories`");
     }
     
     public Connection getConnection() {
@@ -60,13 +70,16 @@ public class Database {
         getAccountsCount.close();
         getAllBillings.close();
         getAllProducts.close();
-        
+        getAllServices.close();
+        getAllHistory.close();
         connection.close();
         
         getAllAccounts = null;
         getAccountsCount = null;
         getAllBillings = null;
         getAllProducts = null;
+        getAllServices = null;
+        getAllHistory = null;
         connection = null;
         isOpen = false;
     }
@@ -81,6 +94,33 @@ public class Database {
     |                               USERS                               |
     |                                                                   |
     *===================================================================*/
+    
+    public ArrayList<User> getAllUsers() {
+        ArrayList<User> users = new ArrayList<>();
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            try {
+                rs = getAllUsers.executeQuery();
+                while (rs.next()) {
+                    User user = new User();
+                    user.setUserId(rs.getInt(1));
+                    user.setUserName(rs.getString(2));
+                    user.setPassword(rs.getString(3));
+                    user.setAuthority(rs.getString(4));
+                    users.add(user);
+                }
+            } catch (SQLException e) {
+                System.err.println("Error while fetching users from database:\n" + e);
+            } finally {
+                try {
+                    if (rs != null && !rs.isClosed()) rs.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                }
+            }
+        }
+        return users;
+    }
     
     public User getUser(String username, String password) {
         if (connection != null && isOpen) {
@@ -114,23 +154,7 @@ public class Database {
     }
     
     public boolean addUser(User user) {
-        if (connection != null && isOpen) {
-            Statement s = null;
-            try {
-                s = connection.createStatement();
-                int n = s.executeUpdate(user.generateSQLInsert());
-                return n > 0;
-            } catch (SQLException e) {
-                System.err.println("Error while adding user entry to database.\n" + e);
-            } finally {
-                try {
-                    if (s != null) s.close();
-                } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
-                }
-            }
-        }
-        return false;
+        return addEntry(user);
     }
     
     /*==================================================================*
@@ -363,23 +387,7 @@ public class Database {
     }
     
     public boolean addAddress(Address address) {
-        if (connection != null && isOpen) {
-            Statement s = null;
-            try {
-                s = connection.createStatement();
-                int n = s.executeUpdate(address.generateSQLInsert());
-                return n > 0;
-            } catch (SQLException e) {
-                System.err.println("Error while adding address entry to database.\n" + e);
-            } finally {
-                try {
-                    if (s != null) s.close();
-                } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
-                }
-            }
-        }
-        return false;
+        return addEntry(address);
     }
 
     /*==================================================================*
@@ -422,6 +430,7 @@ public class Database {
                     billing = fetchBillingInfo(rs);
                 }
             } catch (SQLException | ParseException e) {
+                System.err.println("errrr");
                 System.err.println("Error while fetching billing data.\n" + e);
             } finally {
                 try {
@@ -517,13 +526,12 @@ public class Database {
                         .append("', ")
                         .append("`type`='")
                         .append(updatedBilling.getType().getName())
-                        .append("'");
-                if (updatedBilling.getDateUpdated() != null) {
-                    sb.append(", ")
-                            .append("`date_updated`='")
-                            .append(Utils.MYSQL_DATETIME_FORMAT.format(updatedBilling.getDateUpdated()))
-                            .append("'");
-                }
+                        .append("', ")
+                        
+                        // set date_udpated to current date and time
+                        .append("`date_updated`='")
+                        .append(Utils.MYSQL_DATETIME_FORMAT.format(updatedBilling.getDateUpdated()))
+                        .append("'");;
                 sb.append(" WHERE (`billing_no`='")
                         .append(billingNo)
                         .append("')");
@@ -622,6 +630,7 @@ public class Database {
     *===================================================================*/
     
     public int addBillingProcessed(BillingProcessed billingProcessed) {
+        System.out.println("why");
         if (connection != null && isOpen) {
             Statement s = null;
             ResultSet rsKey = null;
@@ -650,6 +659,82 @@ public class Database {
     
     /*==================================================================*
     |                                                                   |
+    |                               REVENUES                            |
+    |                                                                   |
+    *===================================================================*/
+    
+    public ArrayList<Revenue> getAllRevenues() {
+        ArrayList<Revenue> revenues = new ArrayList<>();
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            try {
+                rs = getAllRevenues.executeQuery();
+                while (rs.next()) {
+                    Revenue revenue = new Revenue();
+                    revenue.setRevenueNo(rs.getInt(1));
+                    revenue.setAmount(rs.getDouble(2));
+                    revenue.setType(rs.getString(3));
+                    revenue.setDescription(rs.getString(4));
+                    revenue.setDate(Utils.MYSQL_DATETIME_FORMAT.parse(rs.getString(5)));
+                    revenues.add(revenue);
+                }
+            } catch (SQLException | ParseException e) {
+                System.err.println("Error while fetching revenues from database:\n" + e);
+            } finally {
+                try {
+                    if (rs != null && !rs.isClosed()) rs.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                }
+            }
+        }
+        return revenues; 
+    }
+    
+    public boolean addRevenue(Revenue revenue) {
+        return addEntry(revenue);
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                               EXPENSES                            |
+    |                                                                   |
+    *===================================================================*/
+    
+    public ArrayList<Expense> getAllExpenses() {
+        ArrayList<Expense> expenses = new ArrayList<>();
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            try {
+                rs = getAllHistory.executeQuery();
+                while (rs.next()) {
+                    Expense expense = new Expense();
+                    expense.setExpenseNo(rs.getInt(1));
+                    expense.setAmount(rs.getDouble(2));
+                    expense.setType(rs.getString(3));
+                    expense.setDescription(rs.getString(4));
+                    expense.setDate(Utils.MYSQL_DATETIME_FORMAT.parse(rs.getString(5)));
+                    expenses.add(expense);
+                }
+            } catch (SQLException | ParseException e) {
+                System.err.println("Error while fetching expenses from database:\n" + e);
+            } finally {
+                try {
+                    if (rs != null && !rs.isClosed()) rs.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                }
+            }
+        }
+        return expenses;
+    }
+    
+    public boolean addExpense(Expense expense) {
+        return addEntry(expense);
+    }
+    
+    /*==================================================================*
+    |                                                                   |
     |                               BALANCES                            |
     |                                                                   |
     *===================================================================*/
@@ -666,16 +751,17 @@ public class Database {
                     Balance b = new Balance();
                     b.setBalanceNo(rs.getInt(1));
                     b.setBillingProcessedNo(rs.getInt(2));
-                    b.setAmount(rs.getDouble(3));
-                    b.setIsPaid(Boolean.parseBoolean(rs.getString(4)));
-                    String dateStr = rs.getString(5);
+                    b.setAccountNo(rs.getString(3));
+                    b.setAmount(rs.getDouble(4));
+                    b.setIsPaid(Boolean.parseBoolean(rs.getString(5)));
+                    String dateStr = rs.getString(6);
                     if (dateStr != null && !dateStr.isEmpty()) {
                         b.setDatePaid(Utils.MYSQL_DATETIME_FORMAT.parse(dateStr));
                     }
                     balances.add(b);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while adding billing processed entry to database.\n" + e);
+                System.err.println("Error while fetching balance entries to database.\n" + e);
             } finally {
                 try {
                     if (s != null) s.close();
@@ -689,19 +775,33 @@ public class Database {
     }
     
     public boolean addBalance(Balance balance) {
+        return addEntry(balance);
+    }
+    
+    /**
+     * Updates the Balance entry. date_paid column is automatically set when calling
+     * this method.
+     * 
+     * @param balanceNo
+     * @param paid
+     * @return 
+     */
+    public boolean updateBalance(int balanceNo, boolean paid) {
         if (connection != null && isOpen) {
             Statement s = null;
             try {
                 s = connection.createStatement();
-                int n = s.executeUpdate(balance.generateSQLInsert());
+                String sql = String.format("UPDATE `balances` SET `paid`='%s', `date_paid`='%s' WHERE (`balance_no`='%d')",
+                        String.valueOf(paid), Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()), balanceNo);
+                int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while adding balance entry to database.\n" + e);
+                System.err.println("Error while updating balance entry from the database.\n" + e);
             } finally {
                 try {
                     if (s != null) s.close();
-                } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                } catch (SQLException e) {
+                    System.err.println("Failed to close Statement object.\n" + e);
                 }
             }
         }
@@ -871,23 +971,7 @@ public class Database {
     }
 
     public boolean addInternetSubscription(InternetSubscription internet) {
-        if (connection != null && isOpen) {
-            Statement s = null;
-            try {
-                s = connection.createStatement();
-                int n = s.executeUpdate(internet.generateSQLInsert());
-                return n > 0;
-            } catch (SQLException e) {
-                System.err.println("Error while adding internet entry to database.\n" + e);
-            } finally {
-                try {
-                    if (s != null) s.close();
-                } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
-                }
-            }
-        }
-        return false;
+        return addEntry(internet);
     }
     
     /*==================================================================*
@@ -925,23 +1009,7 @@ public class Database {
     }
     
     public boolean addProduct(Product product) {
-        if (connection != null && isOpen) {
-            Statement s = null;
-            try {
-                s = connection.createStatement();
-                int n = s.executeUpdate(product.generateSQLInsert());
-                return n > 0;
-            } catch (SQLException e) {
-                System.err.println("Error while adding product entry to database.\n" + e);
-            } finally {
-                try {
-                    if (s != null) s.close();
-                } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
-                }
-            }
-        }
-        return false;
+        return addEntry(product);
     }
     
     public boolean updateProductCount(int productId, int count) {
@@ -1029,14 +1097,67 @@ public class Database {
     }
     
     public boolean addService(Service service) {
+        return addEntry(service);
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                               HISTORY                             |
+    |                                                                   |
+    *===================================================================*/
+    
+    public ArrayList<History> getHistories() {
+        ArrayList<History> histories = new ArrayList<>();
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            try {
+                rs = getAllHistory.executeQuery();
+                while (rs.next()) {
+                    History history = new History();
+                    history.setId(rs.getInt(1));
+                    history.setTitle(rs.getString(2));
+                    history.setDescription(rs.getString(3));
+                    history.setDate(Utils.MYSQL_DATETIME_FORMAT.parse(rs.getString(4)));
+                    histories.add(history);
+                }
+            } catch (SQLException | ParseException e) {
+                System.err.println("Error while fetching histories from database:\n" + e);
+            } finally {
+                try {
+                    if (rs != null && !rs.isClosed()) rs.close();
+                } catch (SQLException ex) {
+                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                }
+            }
+        }
+        return histories;
+    }
+    
+    public boolean addHistory(History history) {
+        return addEntry(history);
+    }
+    
+    /*==================================================================*
+    |                                                                   |
+    |                               GENERAL                             |
+    |                                                                   |
+    *===================================================================*/
+    
+    /**
+     * Add new entry to the database. Entry must implement IEntry.
+     * 
+     * @param entry Object that implements IEntry.
+     * @return true if added successfully, otherwise returns false
+     */
+    public boolean addEntry(IEntry entry) {
         if (connection != null && isOpen) {
             Statement s = null;
             try {
                 s = connection.createStatement();
-                int n = s.executeUpdate(service.generateSQLInsert());
+                int n = s.executeUpdate(entry.generateSQLInsert());
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while adding service entry to database.\n" + e);
+                System.err.println("Error while adding entry to database.\n" + e);
             } finally {
                 try {
                     if (s != null) s.close();
@@ -1047,12 +1168,6 @@ public class Database {
         }
         return false;
     }
-    
-    /*==================================================================*
-    |                                                                   |
-    |                               GENERAL                             |
-    |                                                                   |
-    *===================================================================*/
     
     public boolean update(String keyColumn, String keyValue, String table, String column, String value) {
         if (connection != null && isOpen) {

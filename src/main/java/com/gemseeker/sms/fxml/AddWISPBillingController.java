@@ -5,9 +5,11 @@ import com.gemseeker.sms.Utils;
 import static com.gemseeker.sms.data.EnumBillingStatus.*;
 import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.Account;
+import com.gemseeker.sms.data.Balance;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumBillingStatus;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Service;
@@ -206,8 +208,21 @@ public class AddWISPBillingController extends Controller {
     private void showDetails(Account account) {
         InternetSubscription isub = account.getInternetSubscription();
         if(isub != null) {
-            tfData.setText(isub.getBandwidth() + " mbps");
+            int bandwidth = isub.getBandwidth();
+            if (bandwidth > 0) {
+                tfData.setText(bandwidth + " mbps");
+            } else {
+                tfData.setText("Unlimited");
+            }
             tfMonthlyPayment.setText("Php " + isub.getAmount());
+        }
+        
+        if (!account.getBalances().isEmpty()) {
+            double balanceTotal = 0;
+            for (Balance b : account.getBalances()) {
+                balanceTotal += b.getAmount();
+            }
+            tfBalance.setText(balanceTotal + "");
         }
     }
     
@@ -264,6 +279,16 @@ public class AddWISPBillingController extends Controller {
             try {
                 Database database = Database.getInstance();
                 boolean added = database.addBilling(billing);
+                
+                if (added) {
+                    // add to history
+                    History history = new History();
+                    history.setTitle("New WISP Billing");
+                    history.setDescription(String.format("Added new WISP billing amounting to Php %.2f, due on %s",
+                            billing.getAmount(), billing.getDueDate()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
+                }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!added) {

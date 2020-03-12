@@ -1,12 +1,13 @@
 package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
+import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
-import com.gemseeker.sms.fxml.components.InfoDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
 import java.sql.SQLException;
@@ -30,13 +31,13 @@ import javafx.stage.Stage;
  */
 public class AddItemController extends Controller {
     
-    @FXML ComboBox<Product> cbItems;
-    @FXML TextField tfPrice;
-    @FXML TextField tfStock;
-    @FXML TextField tfTotal;
-    @FXML Spinner<Integer> spQuantity;
-    @FXML Button btnCancel;
-    @FXML Button btnAdd;
+    @FXML private ComboBox<Product> cbItems;
+    @FXML private TextField tfPrice;
+    @FXML private TextField tfStock;
+    @FXML private TextField tfTotal;
+    @FXML private Spinner<Integer> spQuantity;
+    @FXML private Button btnCancel;
+    @FXML private Button btnAdd;
     
     private Stage stage;
     private Scene scene;
@@ -166,6 +167,14 @@ public class AddItemController extends Controller {
                     payment.setPaymentId(id);
                     billing.addPayment(payment);
                     database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
+                    
+                    // add to history
+                    History history = new History();
+                    history.setTitle("Update Billing");
+                    history.setDescription(String.format("Updated billing with ID %d. Added new item for payment (%s - Php %.2f)",
+                            billing.getBillingId(), payment.getName(), payment.getAmount()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
                 }
                 
                 Platform.runLater(() -> {

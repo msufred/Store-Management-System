@@ -1,12 +1,16 @@
 package com.gemseeker.sms;
 
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.User;
 import com.gemseeker.sms.fxml.MainController;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
+import com.gemseeker.sms.fxml.components.InfoDialog;
+import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ResourceBundle;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
@@ -30,26 +34,21 @@ public class AppMain extends Application implements Initializable {
     private static final int HEIGHT = 700;
 
     // login
-    @FXML TextField userField;
-    @FXML PasswordField passField;
-    @FXML Button loginBtn;
-    @FXML Button exitBtn;
+    @FXML private TextField userField;
+    @FXML private PasswordField passField;
+    @FXML private Button loginBtn;
+    @FXML private Button exitBtn;
+    @FXML private ProgressBar progressBar;
     private Pane loginPane;
     private StackPane root;
-    private ProgressBar progressBar;
-    
-    private boolean hasUserInput = false;
-    private boolean hasPassInput = false;
     
     // controllers
     private MainController mainController;
     
     @Override
     public void start(Stage stage) throws Exception {
-        progressBar = new ProgressBar(ProgressBar.INDETERMINATE_PROGRESS);
-        progressBar.setPrefWidth(200);
-
         root = new StackPane();
+        root.setStyle("-fx-background-color: #ffffff");
         Scene scene = new Scene(root, WIDTH, HEIGHT);
         stage.setScene(scene);
 //        stage.setMaximized(true);
@@ -69,32 +68,59 @@ public class AppMain extends Application implements Initializable {
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        userField.textProperty().addListener((o, s1, s2) -> {
-            hasUserInput = !s2.isBlank();
-            validateInput();
-        });
-        passField.textProperty().addListener((o, s1, s2) -> {
-            hasPassInput = !s2.isBlank();
-            validateInput();
-        });
+        userField.textProperty().addListener((o, s1, s2) -> validateInput());
+        passField.textProperty().addListener((o, s1, s2) -> validateInput());
         loginBtn.setOnAction(evt -> validateLogin());
         exitBtn.setOnAction(evt -> System.exit(0));
     }
     
     private void validateInput() {
-        loginBtn.setDisable(!hasUserInput && !hasPassInput);
+        loginBtn.setDisable(userField.getText().isEmpty() || passField.getText().isEmpty());
     }
     
     private void validateLogin() {
         // for now, proceed to dashboard
-        changeController(mainController);
+        progressBar.setVisible(true);
+        String username = userField.getText();
+        String password = passField.getText();
+        Thread t = new Thread(() -> {
+            try {
+                Database database = Database.getInstance();
+                User user = database.getUser(username, password);
+                Platform.runLater(() -> {
+                    progressBar.setVisible(false);
+                    if (user != null) {
+                        boolean isValid = user.getUserName().equals(username) &&
+                                user.getPassword().equals(password);
+                        if (isValid) {
+                            mainController.setUser(user);
+                            changeController(mainController);
+                        } else {
+                            InfoDialog.show("Invalid User", "Please enter correct username and password.");
+                            userField.clear();
+                            passField.clear();
+                            userField.requestFocus();
+                        }
+                    } else {
+                        InfoDialog.show("Invalid User", "Please enter correct username and password.");
+                        userField.clear();
+                        passField.clear();
+                        userField.requestFocus();
+                    }
+                });
+            } catch (SQLException ex) {
+                progressBar.setVisible(false);
+                ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
+            }
+        });
+        t.setDaemon(true);
+        t.start();
     }
 
     private void loadPanels() {
         // show progress bar while loading panels
-        root.getChildren().clear();
-        root.getChildren().add(progressBar);
-
+        ProgressBarDialog.show();
+        
         Loader loader = Loader.getInstance();
         
         // initialize controllers
@@ -109,6 +135,8 @@ public class AppMain extends Application implements Initializable {
         // load login panel...
         root.getChildren().clear();
         root.getChildren().add(loginPane);
+        
+        ProgressBarDialog.close();
     }
     
     public void changeController(Controller controller) {

@@ -5,8 +5,10 @@
 <?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
@@ -17,112 +19,137 @@
       <Label styleClass="text-title" text="Add Account">
          <padding>
             <Insets bottom="8.0" top="8.0" />
-         </padding></Label>
-      <HBox prefWidth="200.0" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Account Type" />
-            <RadioButton fx:id="rbPersonal" mnemonicParsing="false" selected="true" text="Personal Account" />
-            <RadioButton fx:id="rbCommercial" mnemonicParsing="false" text="Commercial" />
-         </children>
-      </HBox>
-      <Separator prefWidth="200.0" />
-      <HBox alignment="CENTER_LEFT" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Account No." />
-            <TextField fx:id="tfAccountNo" editable="false" promptText="Account No." />
-            <Button fx:id="btnGenerate" mnemonicParsing="false" text="Generate" />
-         </children>
-         <padding>
-            <Insets bottom="4.0" top="4.0" />
          </padding>
-      </HBox>
-      <Separator prefWidth="200.0" />
-      <Label text="Name" />
-      <HBox spacing="8.0">
-         <children>
-            <TextField fx:id="tfFirstname" prefWidth="250.0" promptText="First name" />
-            <TextField fx:id="tfLastname" prefWidth="250.0" promptText="Last name" />
-         </children>
-         <padding>
-            <Insets bottom="4.0" top="4.0" />
-         </padding>
-      </HBox>
-      <Separator prefWidth="200.0" />
-      <Label text="Address" />
-      <TextField fx:id="tfLandmark" prefWidth="164.0" promptText="Sitio/Building No/Street/Landmark etc." />
-      <HBox spacing="8.0">
-         <padding>
-            <Insets bottom="4.0" top="4.0" />
-         </padding>
-         <children>
-            <ComboBox fx:id="cbProvince" prefWidth="150.0" promptText="Province" />
-            <ComboBox fx:id="cbCities" prefWidth="150.0" promptText="City/Municipality" />
-            <ComboBox fx:id="cbBrgy" prefWidth="150.0" promptText="Barangay" />
-         </children>
-      </HBox>
-      <Separator prefWidth="200.0" />
-      <Label text="Contact Number" />
-      <TextField fx:id="tfContactNo" prefHeight="27.0" promptText="Telephone/Cell Number" />
-      <Separator prefWidth="200.0" />
-      <CheckBox fx:id="cbAddInternet" mnemonicParsing="false" text="Internet Subscription" />
-      <HBox fx:id="bandwidthGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Bandwidth" />
-            <ChoiceBox fx:id="cbDataPlan" prefHeight="27.0" prefWidth="155.0" />
-            <Label text="Est. Amount" />
-            <TextField fx:id="tfMonthlyPayment" />
-         </children>
-      </HBox>
-      <HBox fx:id="ipGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="IP Address" />
-            <HBox alignment="CENTER_LEFT" spacing="2.0">
+         <VBox.margin>
+            <Insets left="16.0" />
+         </VBox.margin></Label>
+      <ScrollPane fitToHeight="true" fitToWidth="true" VBox.vgrow="ALWAYS">
+         <content>
+            <VBox spacing="8.0">
                <children>
-                  <TextField fx:id="tfIP01" prefHeight="27.0" prefWidth="62.0" />
-                  <Label text="." />
-                  <TextField fx:id="tfIP02" prefHeight="27.0" prefWidth="62.0" />
-                  <Label text="." />
-                  <TextField fx:id="tfIP03" prefHeight="27.0" prefWidth="62.0" />
-                  <Label text="." />
-                  <TextField fx:id="tfIP04" prefHeight="27.0" prefWidth="62.0" />
+                  <HBox prefWidth="200.0" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Account Type" />
+                        <RadioButton fx:id="rbPersonal" mnemonicParsing="false" selected="true" text="Personal Account" />
+                        <RadioButton fx:id="rbCommercial" mnemonicParsing="false" text="Commercial" />
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <HBox alignment="CENTER_LEFT" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Account No." />
+                        <TextField fx:id="tfAccountNo" editable="false" promptText="Account No." />
+                        <Button fx:id="btnGenerate" mnemonicParsing="false" text="Generate" />
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <Label text="Contract Duration (Air Time Duration)" />
+                  <HBox alignment="CENTER_LEFT" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="From" />
+                        <DatePicker fx:id="dpStart" />
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_LEFT" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="To" />
+                        <DatePicker fx:id="dpEnd" />
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <Label text="Name" />
+                  <HBox spacing="8.0">
+                     <children>
+                        <TextField fx:id="tfFirstname" prefWidth="250.0" promptText="First name" />
+                        <TextField fx:id="tfLastname" prefWidth="250.0" promptText="Last name" />
+                     </children>
+                     <padding>
+                        <Insets bottom="4.0" top="4.0" />
+                     </padding>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <Label text="Address" />
+                  <TextField fx:id="tfLandmark" prefWidth="164.0" promptText="Sitio/Building No/Street/Landmark etc." />
+                  <HBox spacing="8.0">
+                     <padding>
+                        <Insets bottom="4.0" top="4.0" />
+                     </padding>
+                     <children>
+                        <ComboBox fx:id="cbProvince" prefWidth="150.0" promptText="Province" />
+                        <ComboBox fx:id="cbCities" prefWidth="150.0" promptText="City/Municipality" />
+                        <ComboBox fx:id="cbBrgy" prefWidth="150.0" promptText="Barangay" />
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
+                  <Label text="Contact Number" />
+                  <TextField fx:id="tfContactNo" prefHeight="27.0" promptText="Telephone/Cell Number" />
+                  <Separator prefWidth="200.0" />
+                  <CheckBox fx:id="cbAddInternet" mnemonicParsing="false" text="Internet Subscription" />
+                  <HBox fx:id="bandwidthGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Bandwidth" />
+                        <ChoiceBox fx:id="cbDataPlan" prefHeight="27.0" prefWidth="155.0" />
+                        <Label text="Est. Amount" />
+                        <TextField fx:id="tfMonthlyPayment" />
+                     </children>
+                  </HBox>
+                  <HBox fx:id="ipGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="IP Address" />
+                        <HBox alignment="CENTER_LEFT" spacing="2.0">
+                           <children>
+                              <TextField fx:id="tfIP01" prefHeight="27.0" prefWidth="62.0" />
+                              <Label text="." />
+                              <TextField fx:id="tfIP02" prefHeight="27.0" prefWidth="62.0" />
+                              <Label text="." />
+                              <TextField fx:id="tfIP03" prefHeight="27.0" prefWidth="62.0" />
+                              <Label text="." />
+                              <TextField fx:id="tfIP04" prefHeight="27.0" prefWidth="62.0" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </HBox>
+                  <HBox fx:id="latitudeGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Latitude" />
+                        <HBox alignment="CENTER_LEFT" spacing="2.0">
+                           <children>
+                              <TextField fx:id="tfLatitude" prefHeight="27.0" prefWidth="200.0" />
+                              <Label text="(Optional)" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </HBox>
+                  <HBox fx:id="longitudeGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Longitude" />
+                        <HBox alignment="CENTER_LEFT" spacing="2.0">
+                           <children>
+                              <TextField fx:id="tfLongitude" prefHeight="27.0" prefWidth="200.0" />
+                              <Label text="(Optional)" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </HBox>
+                  <HBox fx:id="elevationGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
+                     <children>
+                        <Label prefWidth="100.0" text="Elevation" />
+                        <HBox alignment="CENTER_LEFT" spacing="2.0">
+                           <children>
+                              <TextField fx:id="tfElevation" prefHeight="27.0" prefWidth="200.0" />
+                              <Label text="(Optional)" />
+                           </children>
+                        </HBox>
+                     </children>
+                  </HBox>
+                  <Separator prefWidth="200.0" />
                </children>
-            </HBox>
-         </children>
-      </HBox>
-      <HBox fx:id="latitudeGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Latitude" />
-            <HBox alignment="CENTER_LEFT" spacing="2.0">
-               <children>
-                  <TextField fx:id="tfLatitude" prefHeight="27.0" prefWidth="200.0" />
-                  <Label text="(Optional)" />
-               </children>
-            </HBox>
-         </children>
-      </HBox>
-      <HBox fx:id="longitudeGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Longitude" />
-            <HBox alignment="CENTER_LEFT" spacing="2.0">
-               <children>
-                  <TextField fx:id="tfLongitude" prefHeight="27.0" prefWidth="200.0" />
-                  <Label text="(Optional)" />
-               </children>
-            </HBox>
-         </children>
-      </HBox>
-      <HBox fx:id="elevationGroup" alignment="CENTER_LEFT" disable="true" spacing="8.0">
-         <children>
-            <Label prefWidth="100.0" text="Elevation" />
-            <HBox alignment="CENTER_LEFT" spacing="2.0">
-               <children>
-                  <TextField fx:id="tfElevation" prefHeight="27.0" prefWidth="200.0" />
-                  <Label text="(Optional)" />
-               </children>
-            </HBox>
-         </children>
-      </HBox>
-      <Separator prefWidth="200.0" />
+               <padding>
+                  <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
+               </padding>
+            </VBox>
+         </content>
+      </ScrollPane>
       <HBox alignment="TOP_RIGHT" spacing="8.0">
          <padding>
             <Insets bottom="4.0" top="4.0" />
@@ -132,11 +159,8 @@
             <Button fx:id="btnCancel" cancelButton="true" mnemonicParsing="false" prefWidth="70.0" text="Cancel" />
          </children>
          <VBox.margin>
-            <Insets top="16.0" />
+            <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
          </VBox.margin>
       </HBox>
    </children>
-   <padding>
-      <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
-   </padding>
 </VBox>

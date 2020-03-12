@@ -7,12 +7,15 @@ import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Address;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumAccountType;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
 import java.sql.SQLException;
+import java.text.ParseException;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -22,6 +25,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
@@ -38,41 +42,43 @@ public class AddAccountController extends Controller {
 
     private Stage stage;
     private Scene scene;
-    @FXML RadioButton rbPersonal;
-    @FXML RadioButton rbCommercial;
-    @FXML Button btnGenerate;
+    @FXML private RadioButton rbPersonal;
+    @FXML private RadioButton rbCommercial;
+    @FXML private Button btnGenerate;
+    @FXML private DatePicker dpStart;
+    @FXML private DatePicker dpEnd;
     
-    @FXML TextField tfAccountNo;
-    @FXML TextField tfFirstname;
-    @FXML TextField tfLastname;
-    @FXML TextField tfLandmark;
-    @FXML ComboBox<String> cbProvince;
-    @FXML ComboBox<String> cbCities;
-    @FXML ComboBox<String> cbBrgy;
-    @FXML TextField tfContactNo;
+    @FXML private TextField tfAccountNo;
+    @FXML private TextField tfFirstname;
+    @FXML private TextField tfLastname;
+    @FXML private TextField tfLandmark;
+    @FXML private ComboBox<String> cbProvince;
+    @FXML private ComboBox<String> cbCities;
+    @FXML private ComboBox<String> cbBrgy;
+    @FXML private TextField tfContactNo;
 
-    @FXML CheckBox cbAddInternet;
-    @FXML HBox bandwidthGroup;
-    @FXML ChoiceBox<String> cbDataPlan;
-    @FXML TextField tfMonthlyPayment;
+    @FXML private CheckBox cbAddInternet;
+    @FXML private HBox bandwidthGroup;
+    @FXML private ChoiceBox<String> cbDataPlan;
+    @FXML private TextField tfMonthlyPayment;
     
-    @FXML HBox ipGroup;
-    @FXML TextField tfIP01; // ip address
-    @FXML TextField tfIP02; // -do-
-    @FXML TextField tfIP03; // -do-
-    @FXML TextField tfIP04; // -do-
+    @FXML private HBox ipGroup;
+    @FXML private TextField tfIP01; // ip address
+    @FXML private TextField tfIP02; // -do-
+    @FXML private TextField tfIP03; // -do-
+    @FXML private TextField tfIP04; // -do-
     
-    @FXML HBox latitudeGroup;
-    @FXML TextField tfLatitude;
+    @FXML private HBox latitudeGroup;
+    @FXML private TextField tfLatitude;
     
-    @FXML HBox longitudeGroup;
-    @FXML TextField tfLongitude;
+    @FXML private HBox longitudeGroup;
+    @FXML private TextField tfLongitude;
     
-    @FXML HBox elevationGroup;
-    @FXML TextField tfElevation;
+    @FXML private HBox elevationGroup;
+    @FXML private TextField tfElevation;
     
-    @FXML Button btnSave;
-    @FXML Button btnCancel;
+    @FXML private Button btnSave;
+    @FXML private Button btnCancel;
     
     private final AccountsController accountsController;
     
@@ -223,6 +229,17 @@ public class AddAccountController extends Controller {
             try {
                 Database database = Database.getInstance();
                 boolean added = database.addAccount(account);
+                // add to history if added
+                if (added) {
+                    History history = new History();
+                    history.setTitle("New Account");
+                    history.setTitle(String.format("Added new account: [%s] %s %s",
+                            account.getAccountNumber(),
+                            account.getFirstName(),
+                            account.getLastName()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
+                }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!added) {
@@ -240,21 +257,28 @@ public class AddAccountController extends Controller {
         t.start();
     }
     
-    private boolean subscriptionValidated() {
-        return cbDataPlan.getValue() != null &&
-                !tfMonthlyPayment.getText().isEmpty() &&
-                !tfIP01.getText().isEmpty() &&
-                !tfIP02.getText().isEmpty() &&
-                !tfIP03.getText().isEmpty() &&
-                !tfIP04.getText().isEmpty();
-    }
-    
     private Account getAccountInfo() {
         Account newAccount = new Account();
         newAccount.setAccountNumber(tfAccountNo.getText());
         String firstName = tfFirstname.getText();
         String lastName = tfLastname.getText();
         newAccount.setAccountUserName(lastName, firstName);
+        
+        try {
+            String startStr = dpStart.getEditor().getText();
+            if (!startStr.isEmpty()) {
+                Date start = Utils.DATE_FORMAT_2.parse(startStr);
+                newAccount.setContractStart(start);
+            }
+            
+            String endStr = dpEnd.getEditor().getText();
+            if (!endStr.isEmpty()) {
+                Date end = Utils.DATE_FORMAT_2.parse(endStr);
+                newAccount.setContractEnd(end);
+            }
+        } catch (ParseException e) {
+            System.err.println("Error parsing date.");
+        }
         
         Address address = new Address();
         address.setLandmark(tfLandmark.getText());

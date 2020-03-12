@@ -182,7 +182,12 @@ public class AccountsController extends Controller {
         // Internet Subscription
         InternetSubscription sub = account.getInternetSubscription();
         if (sub != null) {
-            lblBandwidth.setText(sub.getBandwidth() + "");
+            int bandwidth = sub.getBandwidth();
+            if (bandwidth > 0) {
+                lblBandwidth.setText(sub.getBandwidth() + "");
+            } else {
+                lblBandwidth.setText("Unlimited");
+            }
             lblAmount.setText(sub.getAmount() + "");
             lblIPAddress.setText(sub.getIpAddress());
             lblLatitude.setText(sub.getLatitude() + "");

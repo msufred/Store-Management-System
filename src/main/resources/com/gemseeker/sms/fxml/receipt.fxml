@@ -13,23 +13,23 @@
 <?import javafx.scene.layout.VBox?>
 
 
-<VBox stylesheets="@styles.css" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<VBox xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <HBox fx:id="noticeGroup" prefWidth="845.0">
+      <HBox fx:id="receiptGroup" stylesheets="@styles.css">
          <children>
-            <VBox minHeight="-Infinity" minWidth="-Infinity" prefHeight="595.0" prefWidth="412.0" styleClass="content-pane" HBox.hgrow="ALWAYS">
+            <VBox minHeight="-Infinity" minWidth="-Infinity" prefHeight="796.0" prefWidth="612.0">
                <children>
                   <HBox alignment="CENTER_RIGHT" spacing="8.0">
                      <children>
                         <Label text="Date Printed:" textAlignment="CENTER" wrapText="true">
                            <styleClass>
-                              <String fx:value="notice-text" />
+                              <String fx:value="receipt-text" />
                               <String fx:value="mlabel" />
                            </styleClass>
                         </Label>
                         <Label fx:id="lblDate" text="Date" textAlignment="CENTER" wrapText="true">
                            <styleClass>
-                              <String fx:value="notice-text" />
+                              <String fx:value="receipt-text" />
                               <String fx:value="mlabel" />
                            </styleClass>
                         </Label>
@@ -39,7 +39,7 @@
                      <children>
                         <VBox>
                            <children>
-                              <ImageView fitHeight="82.0" fitWidth="287.0" pickOnBounds="true" preserveRatio="true">
+                              <ImageView fitHeight="123.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true">
                                  <image>
                                     <Image url="@logo.png" />
                                  </image>
@@ -48,60 +48,65 @@
                         </VBox>
                         <VBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
                            <children>
-                              <Label text="0909 452 5364">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
-                              <Label text="Core Shelter, Brgy. Colongulo, Surallah">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
-                              <Label text="South Cotabato, 9512">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
+                              <Label styleClass="mlabel" text="0909 452 5364" />
+                              <Label styleClass="mlabel" text="Core Shelter, Brgy. Colongulo, Surallah" />
+                              <Label styleClass="mlabel" text="South Cotabato, 9512" />
                            </children>
                         </VBox>
                      </children>
                   </HBox>
-                  <Label alignment="CENTER" prefHeight="29.0" prefWidth="380.0" styleClass="notice-title-text" text="NOTICE" />
-                  <Label fx:id="lblAccountNo" text="Account No">
+                  <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="39.0" prefWidth="580.0" styleClass="receipt-title-text" text="RECEIPT" />
+                  <Label fx:id="lblAccountNo" prefHeight="13.0" text="Account No">
                      <styleClass>
                         <String fx:value="mlabel" />
-                        <String fx:value="notice-text" />
+                        <String fx:value="receipt-text" />
                      </styleClass>
                   </Label>
-                  <Label fx:id="lblName" styleClass="notice-text" text="Account Name" />
+                  <Label fx:id="lblName" styleClass="receipt-text" text="Account Name" />
                   <Label fx:id="lblAddress" text="Address">
                      <styleClass>
                         <String fx:value="mlabel" />
-                        <String fx:value="notice-text" />
+                        <String fx:value="receipt-text" />
                      </styleClass>
                   </Label>
-                  <TableView fx:id="itemsTable" focusTraversable="false" minHeight="-Infinity" prefHeight="200.0" prefWidth="200.0" styleClass="notice-table" VBox.vgrow="NEVER">
-                    <columns>
-                      <TableColumn fx:id="colName" editable="false" prefWidth="75.0" sortable="false" text="Description" />
-                      <TableColumn fx:id="colPrice" editable="false" prefWidth="75.0" sortable="false" styleClass="table-cell-right-align" text="Price" />
+                  <TableView fx:id="itemsTable" focusTraversable="false" minHeight="-Infinity" prefHeight="371.0" prefWidth="580.0" styleClass="receipt-table">
+                     <columns>
+                        <TableColumn fx:id="colName" editable="false" prefWidth="75.0" sortable="false" text="Description" />
+                        <TableColumn fx:id="colPrice" editable="false" prefWidth="75.0" sortable="false" styleClass="table-cell-right-align" text="Price" />
                         <TableColumn fx:id="colQty" editable="false" prefWidth="75.0" sortable="false" styleClass="table-cell-center-align" text="Qty" />
                         <TableColumn fx:id="colTotal" editable="false" prefWidth="75.0" sortable="false" styleClass="table-cell-right-align" text="Total" />
-                    </columns>
+                     </columns>
                      <columnResizePolicy>
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                      </columnResizePolicy>
                      <VBox.margin>
-                        <Insets top="8.0" />
+                        <Insets top="16.0" />
                      </VBox.margin>
                   </TableView>
                   <HBox alignment="CENTER_RIGHT" spacing="8.0">
                      <children>
-                        <Label styleClass="notice-text" text="Prev. Balance" />
-                        <Label fx:id="lblBalance" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="notice-text" text="Php 0.0">
+                        <Label styleClass="receipt-text" text="Prev. Balance" />
+                        <Label fx:id="lblBalance" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
+                           <padding>
+                              <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+                           </padding>
+                        </Label>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                     <children>
+                        <Label styleClass="receipt-text" text="Tax" />
+                        <Label fx:id="lblTax" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
+                           <padding>
+                              <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+                           </padding>
+                        </Label>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                     <children>
+                        <Label styleClass="receipt-text" text="Discount" />
+                        <Label fx:id="lblDiscount" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
                            <padding>
                               <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
                            </padding>
@@ -118,43 +123,25 @@
                         </Label>
                      </children>
                   </HBox>
-                  <HBox spacing="8.0">
-                     <children>
-                        <Label styleClass="notice-text" text="Due Date:" />
-                        <Label fx:id="lblDueDate" styleClass="notice-text" text="&lt;Not Set&gt;" />
-                     </children>
-                     <VBox.margin>
-                        <Insets top="16.0" />
-                     </VBox.margin>
-                  </HBox>
-                  <Label text="Please pay the amount due on or before the specified due date to avoid penalty. Thank you." textAlignment="CENTER" wrapText="true">
-                     <VBox.margin>
-                        <Insets top="32.0" />
-                     </VBox.margin>
-                     <styleClass>
-                        <String fx:value="mlabel" />
-                        <String fx:value="notice-text" />
-                     </styleClass>
-                  </Label>
                </children>
                <padding>
                   <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />
                </padding>
             </VBox>
             <Separator orientation="VERTICAL" prefHeight="200.0" />
-            <VBox fx:id="noticeGroup1" minHeight="-Infinity" minWidth="-Infinity" prefHeight="595.0" prefWidth="412.0" styleClass="content-pane" HBox.hgrow="ALWAYS">
+            <VBox minHeight="-Infinity" minWidth="-Infinity" prefHeight="796.0" prefWidth="612.0">
                <children>
                   <HBox alignment="CENTER_RIGHT" spacing="8.0">
                      <children>
                         <Label text="Date Printed:" textAlignment="CENTER" wrapText="true">
                            <styleClass>
-                              <String fx:value="notice-text" />
+                              <String fx:value="receipt-text" />
                               <String fx:value="mlabel" />
                            </styleClass>
                         </Label>
                         <Label fx:id="lblDate1" text="Date" textAlignment="CENTER" wrapText="true">
                            <styleClass>
-                              <String fx:value="notice-text" />
+                              <String fx:value="receipt-text" />
                               <String fx:value="mlabel" />
                            </styleClass>
                         </Label>
@@ -164,7 +151,7 @@
                      <children>
                         <VBox>
                            <children>
-                              <ImageView fitHeight="82.0" fitWidth="287.0" pickOnBounds="true" preserveRatio="true">
+                              <ImageView fitHeight="123.0" fitWidth="140.0" pickOnBounds="true" preserveRatio="true">
                                  <image>
                                     <Image url="@logo.png" />
                                  </image>
@@ -173,43 +160,28 @@
                         </VBox>
                         <VBox alignment="CENTER_RIGHT" HBox.hgrow="ALWAYS">
                            <children>
-                              <Label text="0909 452 5364">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
-                              <Label text="Core Shelter, Brgy. Colongulo, Surallah">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
-                              <Label text="South Cotabato, 9512">
-                                 <styleClass>
-                                    <String fx:value="notice-text" />
-                                    <String fx:value="mlabel" />
-                                 </styleClass>
-                              </Label>
+                              <Label styleClass="mlabel" text="0909 452 5364" />
+                              <Label styleClass="mlabel" text="Core Shelter, Brgy. Colongulo, Surallah" />
+                              <Label styleClass="mlabel" text="South Cotabato, 9512" />
                            </children>
                         </VBox>
                      </children>
                   </HBox>
-                  <Label alignment="CENTER" prefHeight="29.0" prefWidth="380.0" styleClass="notice-title-text" text="NOTICE (Copy)" />
-                  <Label fx:id="lblAccountNo1" text="Account No">
+                  <Label alignment="CENTER" contentDisplay="CENTER" prefHeight="39.0" prefWidth="580.0" styleClass="receipt-title-text" text="RECEIPT (Copy)" />
+                  <Label fx:id="lblAccountNo1" prefHeight="13.0" text="Account No">
                      <styleClass>
-                        <String fx:value="notice-text" />
                         <String fx:value="mlabel" />
+                        <String fx:value="receipt-text" />
                      </styleClass>
                   </Label>
-                  <Label fx:id="lblName1" styleClass="notice-text" text="Account Name" />
+                  <Label fx:id="lblName1" styleClass="receipt-text" text="Account Name" />
                   <Label fx:id="lblAddress1" text="Address">
                      <styleClass>
-                        <String fx:value="notice-text" />
                         <String fx:value="mlabel" />
+                        <String fx:value="receipt-text" />
                      </styleClass>
                   </Label>
-                  <TableView fx:id="itemsTable1" focusTraversable="false" minHeight="-Infinity" prefHeight="200.0" prefWidth="200.0" styleClass="notice-table" VBox.vgrow="NEVER">
+                  <TableView fx:id="itemsTable1" focusTraversable="false" minHeight="-Infinity" prefHeight="371.0" prefWidth="580.0" styleClass="receipt-table">
                      <columns>
                         <TableColumn fx:id="colName1" editable="false" prefWidth="75.0" sortable="false" text="Description" />
                         <TableColumn fx:id="colPrice1" editable="false" prefWidth="75.0" sortable="false" styleClass="table-cell-right-align" text="Price" />
@@ -220,13 +192,33 @@
                         <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
                      </columnResizePolicy>
                      <VBox.margin>
-                        <Insets top="8.0" />
+                        <Insets top="16.0" />
                      </VBox.margin>
                   </TableView>
                   <HBox alignment="CENTER_RIGHT" spacing="8.0">
                      <children>
-                        <Label styleClass="notice-text" text="Prev. Balance" />
-                        <Label fx:id="lblBalance1" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="notice-text" text="Php 0.0">
+                        <Label styleClass="receipt-text" text="Prev. Balance" />
+                        <Label fx:id="lblBalance1" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
+                           <padding>
+                              <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+                           </padding>
+                        </Label>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                     <children>
+                        <Label styleClass="receipt-text" text="Tax" />
+                        <Label fx:id="lblTax1" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
+                           <padding>
+                              <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
+                           </padding>
+                        </Label>
+                     </children>
+                  </HBox>
+                  <HBox alignment="CENTER_RIGHT" spacing="8.0">
+                     <children>
+                        <Label styleClass="receipt-text" text="Discount" />
+                        <Label fx:id="lblDiscount1" alignment="CENTER_RIGHT" prefHeight="17.0" prefWidth="88.0" styleClass="receipt-text" text="Php 0.0">
                            <padding>
                               <Insets bottom="8.0" left="8.0" right="8.0" top="8.0" />
                            </padding>
@@ -243,24 +235,6 @@
                         </Label>
                      </children>
                   </HBox>
-                  <HBox spacing="8.0">
-                     <children>
-                        <Label styleClass="notice-text" text="Due Date:" />
-                        <Label fx:id="lblDueDate1" styleClass="notice-text" text="&lt;Not Set&gt;" />
-                     </children>
-                     <VBox.margin>
-                        <Insets top="16.0" />
-                     </VBox.margin>
-                  </HBox>
-                  <Label text="Please pay the amount due on or before the specified due date to avoid penalty. Thank you." textAlignment="CENTER" wrapText="true">
-                     <VBox.margin>
-                        <Insets top="32.0" />
-                     </VBox.margin>
-                     <styleClass>
-                        <String fx:value="notice-text" />
-                        <String fx:value="mlabel" />
-                     </styleClass>
-                  </Label>
                </children>
                <padding>
                   <Insets bottom="16.0" left="16.0" right="16.0" top="16.0" />

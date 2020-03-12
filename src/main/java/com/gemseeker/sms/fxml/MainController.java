@@ -2,11 +2,12 @@ package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Loader;
+import com.gemseeker.sms.data.User;
 import java.net.URL;
 import java.util.ResourceBundle;
 import javafx.fxml.FXML;
-import javafx.scene.control.Tab;
-import javafx.scene.control.TabPane;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
@@ -18,14 +19,16 @@ import javafx.scene.layout.StackPane;
  */
 public class MainController extends Controller {
 
-    @FXML ToggleButton btnDashboard;
-    @FXML ToggleButton btnCustomers;
-    @FXML ToggleButton btnReports;
-    @FXML ToggleButton btnPayments;
-    @FXML ToggleButton btnSales;
-    @FXML ToggleButton btnTransactions;
-    @FXML ToggleButton btnInventory;
-    @FXML StackPane paymentsContentPane;
+    @FXML private ToggleButton btnDashboard;
+    @FXML private ToggleButton btnCustomers;
+    @FXML private ToggleButton btnPayments;
+    @FXML private ToggleButton btnSales;
+    @FXML private ToggleButton btnHistory;
+    @FXML private ToggleButton btnInventory;
+    @FXML private ToggleButton btnUsers;
+    @FXML private StackPane paymentsContentPane;
+    @FXML private Label lblAuthority;
+    @FXML private Button btnSettings;
     
     private ToggleGroup paymentsToggleGroup;
     
@@ -37,12 +40,16 @@ public class MainController extends Controller {
     private BillingsController billingsController;
     private AccountsController accountssController;
     private SalesController salesController;
-    private ReportsController reportsController;
-    private TransactionsController transactionsController;
     private InventoryController inventoryController;
+    private UsersController usersController;
+    private HistoryController historyController;
+    
+    private SettingsController settingsController;
     
     // ...
     private Controller mCurrentController = null;
+    
+    private User mUser;
 
     @Override
     public void onLoadTask() {
@@ -51,25 +58,41 @@ public class MainController extends Controller {
         billingsController = new BillingsController();
         accountssController = new AccountsController();
         salesController = new SalesController();
-        reportsController = new ReportsController();
-        transactionsController = new TransactionsController();
         inventoryController = new InventoryController();
+        usersController = new UsersController();
+        historyController = new HistoryController();
+        
+        settingsController = new SettingsController();
         
         loadControllers();
         
         // todo load initial controller
         changeView(summaryController);
+        
+        if (mUser != null) {
+            if (mUser.getAuthority().equals("administrator")) {
+                lblAuthority.setText("Administrator");
+            } else {
+                lblAuthority.setText("Guest");
+                btnUsers.setVisible(false);
+            }
+        }
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {      
         paymentsToggleGroup = new ToggleGroup();
-        paymentsToggleGroup.getToggles().addAll(btnDashboard, btnCustomers, btnReports,
-                btnPayments, btnSales, btnTransactions, btnInventory);
+        paymentsToggleGroup.getToggles().addAll(btnDashboard, btnCustomers,
+                btnPayments, btnSales, btnHistory, btnInventory, btnUsers);
         setupToggles();
         
-        setupTogglesEventFilter(btnDashboard, btnCustomers, btnReports, btnPayments, 
-                btnSales, btnTransactions, btnInventory);
+        setupTogglesEventFilter(btnDashboard, btnCustomers, btnPayments, 
+                btnSales, btnHistory, btnInventory, btnUsers);
+        
+        btnSettings.setOnAction(evt -> {
+            if (!settingsController.isLoaded()) settingsController.onLoadTask();
+            settingsController.show(mUser);
+        });
     }
     
     private void loadControllers() {
@@ -80,9 +103,11 @@ public class MainController extends Controller {
         loader.load("fxml/billings.fxml", billingsController);
         loader.load("fxml/accounts.fxml", accountssController);
         loader.load("fxml/sales.fxml", salesController);
-        loader.load("fxml/reports.fxml", reportsController);
-        loader.load("fxml/transactions.fxml", transactionsController);
         loader.load("fxml/inventory.fxml", inventoryController);
+        loader.load("fxml/users.fxml", usersController);
+        loader.load("fxml/history.fxml", historyController);
+        
+        loader.load("fxml/settings.fxml", settingsController);
     }
 
     /**
@@ -105,14 +130,14 @@ public class MainController extends Controller {
                 changeView(billingsController);
             } else if (t1.equals(btnCustomers)) {
                 changeView(accountssController);
-            } else if (t1.equals(btnReports)) {
-                changeView(reportsController);
             } else if (t1.equals(btnSales)) {
                 changeView(salesController);
-            } else if (t1.equals(btnTransactions)) {
-                changeView(transactionsController);
+            } else if (t1.equals(btnHistory)) {
+                changeView(historyController);
             } else if (t1.equals(btnInventory)) {
                 changeView(inventoryController);
+            } else if (t1.equals(btnUsers)) {
+                changeView(usersController);
             }
         });
     }
@@ -125,4 +150,8 @@ public class MainController extends Controller {
         controller.onResume();
     }
 
+    public void setUser(User user) {
+        mUser = user;
+    }
+    
 }

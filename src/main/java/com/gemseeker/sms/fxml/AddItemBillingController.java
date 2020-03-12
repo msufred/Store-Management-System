@@ -8,6 +8,7 @@ import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumBillingStatus;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
@@ -41,23 +42,23 @@ import javafx.stage.Stage;
  */
 public class AddItemBillingController extends Controller {
 
-    @FXML ComboBox<Account> cbAccounts;
-    @FXML HBox addItemGroup;
-    @FXML TableView<Payment> itemsTable;
-    @FXML TableColumn<Payment, String> colItem;
-    @FXML TableColumn<Payment, Double> colPrice;
-    @FXML TableColumn<Payment, Integer> colQuantity;
-    @FXML TableColumn<Payment, Double> colTotal;
-    @FXML ComboBox<Product> cbItems;
-    @FXML TextField tfPrice;
-    @FXML Spinner spQuantity;
-    @FXML TextField tfTotal;
-    @FXML DatePicker dueDate;
-    @FXML ChoiceBox<EnumBillingStatus> cbStatus;
-    @FXML Button btnAdd;
-    @FXML Button btnCancel;
-    @FXML Button btnSave;
-    @FXML Button btnSavePrint;
+    @FXML private ComboBox<Account> cbAccounts;
+    @FXML private HBox addItemGroup;
+    @FXML private TableView<Payment> itemsTable;
+    @FXML private TableColumn<Payment, String> colItem;
+    @FXML private TableColumn<Payment, Double> colPrice;
+    @FXML private TableColumn<Payment, Integer> colQuantity;
+    @FXML private TableColumn<Payment, Double> colTotal;
+    @FXML private ComboBox<Product> cbItems;
+    @FXML private TextField tfPrice;
+    @FXML private Spinner spQuantity;
+    @FXML private TextField tfTotal;
+    @FXML private DatePicker dueDate;
+    @FXML private ChoiceBox<EnumBillingStatus> cbStatus;
+    @FXML private Button btnAdd;
+    @FXML private Button btnCancel;
+    @FXML private Button btnSave;
+    @FXML private Button btnSavePrint;
     
     private Stage stage;
     private Scene scene;
@@ -222,6 +223,14 @@ public class AddItemBillingController extends Controller {
                             database.updateProductCount(product.getProductId(), newCount);
                         }
                     }
+                    
+                    // add to history
+                    History history = new History();
+                    history.setTitle("New Item Billing");
+                    history.setDescription(String.format("Added new ITEM billing amounting to Php %.2f, due on %s",
+                            billing.getAmount(), billing.getDueDate()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
                 }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();

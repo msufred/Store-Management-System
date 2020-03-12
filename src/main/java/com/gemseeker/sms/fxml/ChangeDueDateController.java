@@ -4,6 +4,7 @@ import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import java.net.URL;
@@ -83,6 +84,14 @@ public class ChangeDueDateController extends Controller {
                     if (updated) {
                         database.updateBilling(billing.getBillingId(), "date_updated",
                                 Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()));
+                        
+                        // add to history
+                        History history = new History();
+                        history.setTitle("Update Billing");
+                        history.setDescription(String.format("Updated billing with ID %d. Changed due date from %s to %s",
+                                billing.getBillingId(), billing.getDueDate(), dateStr));
+                        history.setDate(Utils.getDateNow());
+                        database.addHistory(history);
                     }
                     Platform.runLater(() -> {
                         ProgressBarDialog.close();

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?><preferences>
     <general>
-        <app-name>Payment Tracking Application</app-name>
+        <app-name>LIVErary IT Solutions Application</app-name>
     </general>
     <database>
         <url>localhost/billings</url>

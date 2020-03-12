@@ -32,9 +32,9 @@ import javafx.stage.Stage;
  *
  * @author gemini1991
  */
-public class PrintNoticeController extends Controller {
-
-    @FXML private HBox noticeGroup;
+public class PrintReceiptController extends Controller {
+    
+    @FXML private HBox receiptGroup;
     
     @FXML private Label lblDate;
     @FXML private Label lblAccountNo;
@@ -42,6 +42,8 @@ public class PrintNoticeController extends Controller {
     @FXML private Label lblAddress;
     @FXML private Label lblDueDate;
     @FXML private Label lblBalance;
+    @FXML private Label lblTax;
+    @FXML private Label lblDiscount;
     @FXML private Label lblTotal;
     @FXML private TableView<Payment> itemsTable;
     @FXML private TableColumn<Payment, String> colName;
@@ -57,6 +59,8 @@ public class PrintNoticeController extends Controller {
     @FXML private Label lblDueDate1;
     @FXML private Label lblTotal1;
     @FXML private Label lblBalance1;
+    @FXML private Label lblTax1;
+    @FXML private Label lblDiscount1;
     @FXML private TableView<Payment> itemsTable1;
     @FXML private TableColumn<Payment, String> colName1;
     @FXML private TableColumn<Payment, Double> colPrice1;
@@ -69,15 +73,10 @@ public class PrintNoticeController extends Controller {
     private Stage stage;
     private Scene scene;
     
-    private final BillingsController billingsController;
     private Billing billing;
-    
-    public PrintNoticeController(BillingsController billingsController) {
-        this.billingsController = billingsController;
-    }
-    
+
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void initialize(URL location, ResourceBundle resources) {
         itemsTable.setSelectionModel(null);
         itemsTable.setSelectionModel(null);
         
@@ -106,7 +105,7 @@ public class PrintNoticeController extends Controller {
             scene = new Scene(getContentPane());
             stage.setScene(scene);
         }
-        noticeGroup.getTransforms().clear();
+        receiptGroup.getTransforms().clear();
         stage.show();
         this.billing = billing;
         showDetails();
@@ -161,14 +160,14 @@ public class PrintNoticeController extends Controller {
 
             double pw = pageLayout.getPrintableWidth();
             double ph = pageLayout.getPrintableHeight();
-            double nw = noticeGroup.getBoundsInParent().getWidth();
-            double nh = noticeGroup.getBoundsInParent().getHeight();
+            double nw = receiptGroup.getBoundsInParent().getWidth();
+            double nh = receiptGroup.getBoundsInParent().getHeight();
             double sx = pw/nw;
             double sy = ph/nh;
             
-            noticeGroup.getTransforms().add(new Scale(sx, sy));
+            receiptGroup.getTransforms().add(new Scale(sx, sy));
             
-            boolean success = job.printPage(pageLayout, noticeGroup);
+            boolean success = job.printPage(pageLayout, receiptGroup);
             if (success) job.endJob();
             else {
                 System.out.println("Failed to print...");

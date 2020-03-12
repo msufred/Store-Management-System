@@ -4,6 +4,7 @@ plugins {
 }
 
 group = 'com.gemseeker'
+version = '1.0.0_SNAPSHOT'
 
 mainClassName = 'com.gemseeker.sms.Main'
 

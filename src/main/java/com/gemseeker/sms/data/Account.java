@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Date;
 
 /**
+ * Account entry refers to a registered account that can avail an internet
+ * subscription or just to avail certain services.
  *
  * @author gemini1991
  */
@@ -15,7 +17,9 @@ public class Account implements IEntry {
     private String firstName; // name of account user
     private String lastName;
     private String contactNumber; 
-    private Date dateRegistered;
+    private Date dateRegistered; // start up date - manual
+    private Date contractStart;
+    private Date contractEnd;
     private EnumAccountStatus status; // current account status
     private Date lastDatePaid;
     private EnumAccountType accountType;
@@ -55,6 +59,14 @@ public class Account implements IEntry {
     public void setDateRegistered(Date date) {
         this.dateRegistered = date;
     }
+    
+    public void setContractStart(Date date) {
+        this.contractStart = date;
+    }
+    
+    public void setContractEnd(Date date) {
+        this.contractEnd = date;
+    }
 
     public void setStatus(EnumAccountStatus status) {
         this.status = status;
@@ -86,6 +98,14 @@ public class Account implements IEntry {
     
     public Date getDateRegistered() {
         return dateRegistered;
+    }
+    
+    public Date getContractStart() {
+        return contractStart;
+    }
+    
+    public Date getContractEnd() {
+        return contractEnd;
     }
 
     public EnumAccountStatus getStatus() {
@@ -141,7 +161,14 @@ public class Account implements IEntry {
         if (lastDatePaid != null) {
             sb.append("`last_date+paid`, ");
         }
-        sb.append("`type`) VALUES (");
+        sb.append("`type`");
+        if (contractStart != null) {
+            sb.append(", `contract_start`");
+        }
+        if (contractEnd != null) {
+            sb.append(", `contract_end`");
+        }
+        sb.append(") VALUES (");
         sb.append("'").append(accountNumber).append("', ");
         sb.append("'").append(firstName).append("', ");
         sb.append("'").append(lastName).append("', ");
@@ -151,7 +178,14 @@ public class Account implements IEntry {
         if (lastDatePaid != null) {
             sb.append("'").append(Utils.MYSQL_DATETIME_FORMAT.format(lastDatePaid)).append("', ");
         }
-        sb.append("'").append(accountType.toString()).append("')");
+        sb.append("'").append(accountType.toString()).append("'");
+        if (contractStart != null) {
+            sb.append(", '").append(Utils.MYSQL_DATETIME_FORMAT.format(contractStart)).append("'");
+        }
+        if (contractEnd != null) {
+            sb.append(", '").append(Utils.MYSQL_DATETIME_FORMAT.format(contractEnd)).append("'");
+        }
+        sb.append(")");
 
         return sb.toString();
     }

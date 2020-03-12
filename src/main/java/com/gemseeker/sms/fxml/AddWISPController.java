@@ -4,6 +4,7 @@ import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.data.Service;
@@ -31,7 +32,7 @@ import javafx.stage.Stage;
  *
  * @author gemini1991
  */
-public class AddWispController extends Controller {
+public class AddWISPController extends Controller {
     
     @FXML ComboBox<Service> cbItems;
     @FXML TextField tfPrice;
@@ -46,7 +47,7 @@ public class AddWispController extends Controller {
     private Billing billing;
     private final BillingsController billingsController;
     
-    public AddWispController(BillingsController billingsController) {
+    public AddWISPController(BillingsController billingsController) {
         this.billingsController = billingsController;
     }
 
@@ -170,6 +171,14 @@ public class AddWispController extends Controller {
                     payment.setPaymentId(id);
                     billing.addPayment(payment);
                     database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
+                    
+                    // add to history
+                    History history = new History();
+                    history.setTitle("Update Billing");
+                    history.setDescription(String.format("Updated billing with ID %d. Added new item for payment (%s - Php %.2f)",
+                            billing.getBillingId(), payment.getName(), payment.getAmount()));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
                 }
                 
                 Platform.runLater(() -> {

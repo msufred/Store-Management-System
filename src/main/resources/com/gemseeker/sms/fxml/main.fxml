@@ -14,8 +14,12 @@
    <children>
       <ToolBar nodeOrientation="RIGHT_TO_LEFT" prefHeight="40.0" prefWidth="200.0">
          <items>
+            <Button fx:id="btnSettings" mnemonicParsing="false" text="Settings" />
             <Button mnemonicParsing="false" text="Logout" />
-            <Label text="Hello Admin!" />
+            <Label fx:id="lblAuthority" text="Authority">
+               <padding>
+                  <Insets left="8.0" right="8.0" />
+               </padding></Label>
          </items></ToolBar>
       <HBox spacing="4.0" VBox.vgrow="ALWAYS">
          <children>
@@ -45,19 +49,19 @@
                         <String fx:value="main-toggle-v4" />
                      </styleClass>
                   </ToggleButton>
-                  <ToggleButton fx:id="btnReports" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Reports">
+                  <ToggleButton fx:id="btnInventory" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Services &amp; Products">
                      <styleClass>
                         <String fx:value="main-toggle" />
                         <String fx:value="main-toggle-v1" />
                      </styleClass>
                   </ToggleButton>
-                  <ToggleButton fx:id="btnTransactions" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Transactions">
+                  <ToggleButton fx:id="btnUsers" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Users">
                      <styleClass>
                         <String fx:value="main-toggle" />
                         <String fx:value="main-toggle-v2" />
                      </styleClass>
                   </ToggleButton>
-                  <ToggleButton fx:id="btnInventory" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="Services &amp; Products">
+                  <ToggleButton fx:id="btnHistory" mnemonicParsing="false" prefHeight="48.0" prefWidth="250.0" text="History">
                      <styleClass>
                         <String fx:value="main-toggle" />
                         <String fx:value="main-toggle-v3" />

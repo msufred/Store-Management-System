@@ -5,8 +5,8 @@ import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
-import static com.gemseeker.sms.data.EnumBillingStatus.*;
 import com.gemseeker.sms.data.EnumBillingType;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
@@ -18,15 +18,12 @@ import java.text.ParseException;
 import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Locale;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ChoiceBox;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
@@ -184,6 +181,13 @@ public class EditWISPBillingController extends Controller {
             try {
                 Database database = Database.getInstance();                
                 boolean updated = database.updateBilling(billing.getBillingId(), newBilling);
+                if (updated) {
+                    History history = new History();
+                    history.setDate(Calendar.getInstance().getTime());
+                    history.setTitle("Update Billing");
+                    history.setDescription(String.format("Updated WISP billing with ID: %d", billing.getBillingId()));
+                    database.addHistory(history);
+                }
                 Platform.runLater(() -> {
                     ProgressBarDialog.close();
                     if (!updated) {
