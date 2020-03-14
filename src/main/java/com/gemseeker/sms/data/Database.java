@@ -1,5 +1,7 @@
 package com.gemseeker.sms.data;
 
+import com.gemseeker.sms.AppMain;
+import com.gemseeker.sms.Logger;
 import com.gemseeker.sms.Preferences;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.core.data.IEntry;
@@ -18,6 +20,8 @@ import java.util.Calendar;
  */
 public class Database {
 
+    private static final String DEBUG_NAME = "Database";
+    
     private static Database instance;
     private Connection connection;
     private boolean isOpen;
@@ -26,13 +30,18 @@ public class Database {
     private PreparedStatement getAllAccounts;
     private PreparedStatement getAccountsCount;
     private PreparedStatement getAllBillings;
+    private PreparedStatement getBillingsCount;
     private PreparedStatement getAllRevenues;
     private PreparedStatement getAllExpenses;
     private PreparedStatement getAllProducts;
     private PreparedStatement getAllServices;
     private PreparedStatement getAllHistory;
     
+    private Logger logger;
+    
     private Database() throws SQLException {
+        logger = AppMain.getLogger();
+        
         Preferences pref = Preferences.getInstance();
         if (!pref.isLoaded()) {
             return;
@@ -50,6 +59,7 @@ public class Database {
         getAllAccounts = connection.prepareCall("SELECT * FROM `accounts`");
         getAccountsCount = connection.prepareCall("SELECT COUNT(*) FROM `accounts`");
         getAllBillings = connection.prepareCall("SELECT * FROM `billings`");
+        getBillingsCount = connection.prepareCall("SELECT COUNT(*) FROM `billings`");
         getAllRevenues = connection.prepareCall("SELECT * FROM `revenues`");
         getAllExpenses = connection.prepareCall("SELECT * FROM `expenses`");
         getAllProducts = connection.prepareCall("SELECT * FROM `products`");
@@ -96,6 +106,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<User> getAllUsers() {
+        logger.log(DEBUG_NAME, "fetching all users");
+        
         ArrayList<User> users = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -110,12 +122,12 @@ public class Database {
                     users.add(user);
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching users from database:\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching users from database", e);
             } finally {
                 try {
                     if (rs != null && !rs.isClosed()) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllUsers()", ex);
                 }
             }
         }
@@ -123,6 +135,8 @@ public class Database {
     }
     
     public User getUser(String username, String password) {
+        logger.log(DEBUG_NAME, "fetching user with username=" + username + " and password=" + password);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             ResultSet rs = null;
@@ -139,13 +153,13 @@ public class Database {
                     return user;
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching user from database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching user from database", e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close statement and result set.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getUser()", e);
                 }
             }
         }
@@ -154,6 +168,7 @@ public class Database {
     }
     
     public boolean addUser(User user) {
+        logger.log(DEBUG_NAME, "adding user entry");
         return addEntry(user);
     }
     
@@ -164,7 +179,9 @@ public class Database {
     *===================================================================*/
     
     public int getAccountsCount() {
-        int count = -1;
+        logger.log(DEBUG_NAME, "fetching accounts count");
+        
+        int count = 0;
         if (connection != null && isOpen) {
             ResultSet rs = null;
             try {
@@ -172,19 +189,47 @@ public class Database {
                 rs.next();
                 count = rs.getInt(1);
             } catch (SQLException e) {
-                System.err.println("Error while query.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching accounts count", e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while close ResultSet object in getAccountsCount()");
                 }
             }
         }
         return count;
     }
     
+    public int getAccountsCountByStatus(EnumAccountStatus status) {
+        logger.log(DEBUG_NAME, "fetching accounts with status=" + status.toString());
+        
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            Statement s = null;
+            try {
+                String query = String.format("SELECT COUNT(*) FROM `accounts` WHERE `status` = '%s'", status.toString());
+                s = connection.createStatement();
+                rs = s.executeQuery(query);
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            } catch (SQLException e) {
+                logger.logErr(DEBUG_NAME, "error while fetching accounts with status=" + status.toString(), e);
+            } finally {
+                try {
+                    if (rs != null) rs.close();
+                    if (s != null) s.close();
+                } catch (SQLException ex) {
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getAccountsByStatus()", ex);
+                }
+            }
+        }
+        return 0;
+    }
+    
     public boolean hasAccountNo(String acctNo) {
+        logger.log(DEBUG_NAME, "checking if account with id=" + acctNo + " exist");
         int count = 0;
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -195,13 +240,13 @@ public class Database {
                 rs.next();
                 count = rs.getInt(1);
             } catch (SQLException e) {
-                System.err.println("Error while query.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while checking if account with id=" + acctNo + " exist", e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                     if (s != null) s.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close result set and statement.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in hasAccountNo()", ex);
                 }
             }
         }
@@ -209,6 +254,8 @@ public class Database {
     }
     
     public ArrayList<Account> getAllAccounts() {
+        logger.log(DEBUG_NAME, "fetching all accounts");
+        
         ArrayList<Account> accounts = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -219,12 +266,12 @@ public class Database {
                     accounts.add(account);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching accounts from database:\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching all accounts", e);
             } finally {
                 try {
                     if (rs != null && !rs.isClosed()) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllAccounts()", ex);
                 }
             }
         }
@@ -234,6 +281,8 @@ public class Database {
     //----------
     
     public boolean addAccount(Account account) {
+        logger.log(DEBUG_NAME, "adding account entry");
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -251,12 +300,12 @@ public class Database {
                 }
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while adding account entry to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while adding account entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in addAccount()", ex);
                 }
             }
         }
@@ -266,6 +315,8 @@ public class Database {
     //------------
     
     public Account getAccount(String accountNo) {
+        logger.log(DEBUG_NAME, "fetching account with id=" + accountNo);
+        
         Account account = null;
         if (connection != null && isOpen) {
             Statement s = null;
@@ -277,13 +328,13 @@ public class Database {
                     account = fetchAccountInfo(rs);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching account data.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching account with id=" + accountNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement and ResultSet objects.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getAccount()", e);
                 }
             }
         }
@@ -291,6 +342,8 @@ public class Database {
     }
     
     public boolean deleteAccount(Account account) {
+        logger.log(DEBUG_NAME, "deleting account with id=" + account.getAccountNumber());
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -298,12 +351,12 @@ public class Database {
                 int n = s.executeUpdate("DELETE FROM `accounts` WHERE `account_no`='" + account.getAccountNumber() + "'");
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while deleting account entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while deleting account with id=" + account.getAccountNumber(), e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in deleteAccount()", e);
                 }
             }
         }
@@ -357,6 +410,8 @@ public class Database {
     *===================================================================*/
     
     public Address getAddress(String acctNo) {
+        logger.log(DEBUG_NAME, "fetching address for account with id=" + acctNo);
+        
         if (connection != null && isOpen) {
             ResultSet rs = null;
             Statement s = null;
@@ -373,13 +428,13 @@ public class Database {
                     return address;
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching address from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching address for account with id=" + acctNo, e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet and Statement object.");
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getAddress()", e);
                 }
             }
         }
@@ -387,6 +442,7 @@ public class Database {
     }
     
     public boolean addAddress(Address address) {
+        logger.log(DEBUG_NAME, "adding address entry");
         return addEntry(address);
     }
 
@@ -396,7 +452,59 @@ public class Database {
     |                                                                   |
     *===================================================================*/
     
+    public int getBillingsCount() {
+        logger.log(DEBUG_NAME, "fetching billings count");
+        
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            try {
+                rs = getBillingsCount.executeQuery();
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            } catch (SQLException e) {
+                logger.logErr(DEBUG_NAME, "error while fetching billings count", e);
+            } finally {
+                try {
+                    if (rs != null) rs.close();
+                } catch (SQLException ex) {
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getBillingsCount()", ex);
+                }
+            }
+        }
+        return 0;
+    }
+    
+    public int getBillingsCountByStatus(EnumBillingStatus status) {
+        logger.log(DEBUG_NAME, "fetching billings count with status=" + status.getName());
+        
+        if (connection != null && isOpen) {
+            ResultSet rs = null;
+            Statement s = null;
+            try {
+                String query = String.format("SELECT COUNT(*) FROM `billings` WHERE `status` = '%s'", status.getName());
+                s = connection.createStatement();
+                rs = s.executeQuery(query);
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            } catch (SQLException e) {
+                logger.logErr(DEBUG_NAME, "error while fetching billings count with status=" + status.getName(), e);
+            } finally {
+                try {
+                    if (rs != null) rs.close();
+                    if (s != null) s.close();
+                } catch (SQLException ex) {
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getBillingCountByStatus()", ex);
+                }
+            }
+        }
+        return 0;
+    }
+    
     public ArrayList<Billing> getAllBillings() {
+        logger.log(DEBUG_NAME, "fetching all billings");
+        
         ArrayList<Billing> billings =  new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -406,12 +514,12 @@ public class Database {
                     billings.add(fetchBillingInfo(rs));
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching billings from database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching all billings", e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Error while closing result set.");
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllBillings()", e);
                 }
             }
         }
@@ -419,6 +527,8 @@ public class Database {
     }
     
     public Billing getBilling(int billingNo) {
+        logger.log(DEBUG_NAME, "fetching billing with id=" + billingNo);
+        
         Billing billing = null;
         if (connection != null && isOpen) {
             Statement s = null;
@@ -430,14 +540,13 @@ public class Database {
                     billing = fetchBillingInfo(rs);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("errrr");
-                System.err.println("Error while fetching billing data.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching billing with id=" + billingNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement and ResultSet objects.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getBilling()", e);
                 }
             }
         }
@@ -445,6 +554,8 @@ public class Database {
     }
     
     public boolean addBilling(Billing billing) {
+        logger.log(DEBUG_NAME, "adding billing entry");
+        
         if (connection != null && isOpen) {
             Statement s = null;
             ResultSet rsKeys = null;
@@ -463,13 +574,13 @@ public class Database {
                 }
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while adding billing entry to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while adding billing entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rsKeys != null) rsKeys.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in addBilling()", ex);
                 }
             }
         }
@@ -477,6 +588,8 @@ public class Database {
     }
     
     public boolean deleteBilling(Billing billing) {
+        logger.log(DEBUG_NAME, "delete billing entry with id=" + billing.getBillingId());
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -484,12 +597,12 @@ public class Database {
                 int n = s.executeUpdate("DELETE FROM `billings` WHERE `billing_no`='" + billing.getBillingId() + "'");
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while deleting billing entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while deleting billing entry with id=" + billing.getBillingId(), e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in deleteBilling()", e);
                 }
             }
         }
@@ -497,6 +610,8 @@ public class Database {
     }
     
     public boolean updateBilling(int billingNo, Billing updatedBilling) {
+        logger.log(DEBUG_NAME, "updating billing entry with id=" + billingNo);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -538,12 +653,12 @@ public class Database {
                 int n = s.executeUpdate(sb.toString());
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating billing entry.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating billing entry with id=" + billingNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in updateBilling()", e);
                 }
             }
         }
@@ -551,6 +666,8 @@ public class Database {
     }
     
     public boolean updateBilling(int billingNo, String columnName, String value) {
+        logger.log(DEBUG_NAME, "updating billing entry with id=" + billingNo);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -560,12 +677,12 @@ public class Database {
                 int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating billing entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating billing entry with id=" + billingNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in updateBilling()", e);
                 }
             }
         }
@@ -630,6 +747,8 @@ public class Database {
     *===================================================================*/
     
     public int addBillingProcessed(BillingProcessed billingProcessed) {
+        logger.log(DEBUG_NAME, "adding billing processed entry");
+        
         System.out.println("why");
         if (connection != null && isOpen) {
             Statement s = null;
@@ -644,13 +763,13 @@ public class Database {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Error while adding billing processed entry to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating billing processed entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rsKey != null) rsKey.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in addBillingProcessed()", ex);
                 }
             }
         }
@@ -664,6 +783,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Revenue> getAllRevenues() {
+        logger.log(DEBUG_NAME, "fetching all revenues");
+        
         ArrayList<Revenue> revenues = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -679,12 +800,12 @@ public class Database {
                     revenues.add(revenue);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching revenues from database:\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching all revenues", e);
             } finally {
                 try {
                     if (rs != null && !rs.isClosed()) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllRevenues()", ex);
                 }
             }
         }
@@ -692,6 +813,7 @@ public class Database {
     }
     
     public boolean addRevenue(Revenue revenue) {
+        logger.log(DEBUG_NAME, "adding revenue entry");
         return addEntry(revenue);
     }
     
@@ -702,11 +824,13 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Expense> getAllExpenses() {
+        logger.log(DEBUG_NAME, "fetching expenses");
+        
         ArrayList<Expense> expenses = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
             try {
-                rs = getAllHistory.executeQuery();
+                rs = getAllExpenses.executeQuery();
                 while (rs.next()) {
                     Expense expense = new Expense();
                     expense.setExpenseNo(rs.getInt(1));
@@ -717,12 +841,12 @@ public class Database {
                     expenses.add(expense);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching expenses from database:\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching expenses", e);
             } finally {
                 try {
                     if (rs != null && !rs.isClosed()) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllExpenses()", ex);
                 }
             }
         }
@@ -730,6 +854,7 @@ public class Database {
     }
     
     public boolean addExpense(Expense expense) {
+        logger.log(DEBUG_NAME, "adding expense entry");
         return addEntry(expense);
     }
     
@@ -740,6 +865,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Balance> getBalanceByAccountNo(String accountNo) {
+        logger.log(DEBUG_NAME, "fetching balances for account with id=" + accountNo);
+        
         ArrayList<Balance> balances = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -761,13 +888,13 @@ public class Database {
                     balances.add(b);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching balance entries to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching balances for account with id=" + accountNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rs != null) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getBalanceByAccountNo", ex);
                 }
             }
         }
@@ -775,6 +902,7 @@ public class Database {
     }
     
     public boolean addBalance(Balance balance) {
+        logger.log(DEBUG_NAME, "adding balance entry");
         return addEntry(balance);
     }
     
@@ -787,6 +915,8 @@ public class Database {
      * @return 
      */
     public boolean updateBalance(int balanceNo, boolean paid) {
+        logger.log(DEBUG_NAME, "updating balance with id=" + balanceNo);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -796,12 +926,12 @@ public class Database {
                 int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating balance entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating balance with id=" + balanceNo, e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in updateBalance()", e);
                 }
             }
         }
@@ -815,6 +945,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Payment> getPaymentsByBillingId(String billingId) {
+        logger.log(DEBUG_NAME, "fetching payments of billing with id=" + billingId);
+        
         ArrayList<Payment> payments = new ArrayList<>();
         
         if (connection != null && isOpen) {
@@ -836,13 +968,13 @@ public class Database {
                     payments.add(payment);
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching payments with billin_no=" + billingId + ".\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching payments for billing with id=" + billingId, e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getPaymentsByBillingId()", e);
                 }
             }
         }
@@ -851,6 +983,8 @@ public class Database {
     }
     
     public int addPayment(Payment payment) {
+        logger.log(DEBUG_NAME, "adding payment entry");
+        
         if (connection != null && isOpen) {
             Statement s = null;
             ResultSet rsKey = null;
@@ -864,13 +998,13 @@ public class Database {
                     }
                 }
             } catch (SQLException e) {
-                System.err.println("Error while adding payment entry to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while adding payment entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                     if (rsKey != null) rsKey.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in addPayment()", ex);
                 }
             }
         }
@@ -878,6 +1012,8 @@ public class Database {
     }
     
     public boolean deletePayment(Payment payment) {
+        logger.log(DEBUG_NAME, "deleting payment entry");
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -885,12 +1021,12 @@ public class Database {
                 int n = s.executeUpdate("DELETE FROM `payments` WHERE `payment_no`='" + payment.getPaymentId()+ "'");
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while deleting payment entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while deleting payment entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in deletePayment()", e);
                 }
             }
         }
@@ -898,6 +1034,8 @@ public class Database {
     }
     
     public boolean updatePayment(int paymentId, Payment updatedPayment) {
+        logger.log(DEBUG_NAME, "updating payment with id=" + paymentId);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -918,12 +1056,12 @@ public class Database {
                 int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating payment entry from the database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating payment with id=" + paymentId, e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in updatePayment()", e);
                 }
             }
         }
@@ -937,6 +1075,8 @@ public class Database {
     *===================================================================*/
     
     public InternetSubscription getInternetSubscription(String acctNo) {
+        logger.log(DEBUG_NAME, "fetching internet subscription entry for account with id=" + acctNo);
+        
         if (connection != null && isOpen) {
             ResultSet rs = null;
             Statement s = null;
@@ -957,13 +1097,13 @@ public class Database {
                     return i;
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching internet subscription entry from database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching internet subscription for account with id=" + acctNo, e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getInternetSubscription()", e);
                 }
             }
         }
@@ -981,6 +1121,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Product> getAllProducts() {
+        logger.log(DEBUG_NAME, "fetching all products");
+        
         ArrayList<Product> products = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -996,12 +1138,12 @@ public class Database {
                     products.add(product);
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching product entries from database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching products", e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllProducts()", e);
                 }
             }
         }
@@ -1009,10 +1151,13 @@ public class Database {
     }
     
     public boolean addProduct(Product product) {
+        logger.log(DEBUG_NAME, "adding product entry");
         return addEntry(product);
     }
     
     public boolean updateProductCount(int productId, int count) {
+        logger.log(DEBUG_NAME, "updating count for product with id=" + productId);
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -1021,12 +1166,12 @@ public class Database {
                 int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating product count.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating count for product with id=" + productId, e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in updateProductCount()", e);
                 }
             }
         }
@@ -1034,6 +1179,8 @@ public class Database {
     }
     
     public Product findProductByName(String name) {
+        logger.log(DEBUG_NAME, "fetching product with name=" + name);
+        
         if (connection != null && isOpen) {
             ResultSet rs = null;
             Statement s = null;
@@ -1050,13 +1197,13 @@ public class Database {
                     return product;
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching product (" + name + ").\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching product with name=" + name, e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet and Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in findProductByName()", e);
                 }
             }
         }
@@ -1070,6 +1217,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<Service> getAllServices() {
+        logger.log(DEBUG_NAME, "fetching all services");
+        
         ArrayList<Service> services = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -1084,12 +1233,12 @@ public class Database {
                     services.add(service);
                 }
             } catch (SQLException e) {
-                System.err.println("Error while fetching services from database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching services", e);
             } finally {
                 try {
                     if (rs != null) rs.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close ResultSet object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getAllServices*()", e);
                 }
             }
         }
@@ -1097,6 +1246,7 @@ public class Database {
     }
     
     public boolean addService(Service service) {
+        logger.log(DEBUG_NAME, "adding service entry");
         return addEntry(service);
     }
     
@@ -1107,6 +1257,8 @@ public class Database {
     *===================================================================*/
     
     public ArrayList<History> getHistories() {
+        logger.log(DEBUG_NAME, "fetching histories");
+        
         ArrayList<History> histories = new ArrayList<>();
         if (connection != null && isOpen) {
             ResultSet rs = null;
@@ -1121,12 +1273,12 @@ public class Database {
                     histories.add(history);
                 }
             } catch (SQLException | ParseException e) {
-                System.err.println("Error while fetching histories from database:\n" + e);
+                logger.logErr(DEBUG_NAME, "error while fetching histories", e);
             } finally {
                 try {
                     if (rs != null && !rs.isClosed()) rs.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close ResultSet object.\n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing ResultSet object in getHistories()", ex);
                 }
             }
         }
@@ -1134,6 +1286,7 @@ public class Database {
     }
     
     public boolean addHistory(History history) {
+        logger.log(DEBUG_NAME, "adding history entry");
         return addEntry(history);
     }
     
@@ -1150,6 +1303,7 @@ public class Database {
      * @return true if added successfully, otherwise returns false
      */
     public boolean addEntry(IEntry entry) {
+        logger.log(DEBUG_NAME, "adding entry");
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -1157,12 +1311,12 @@ public class Database {
                 int n = s.executeUpdate(entry.generateSQLInsert());
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while adding entry to database.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while adding entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException ex) {
-                    System.err.println("Failed to close Statement object. \n" + ex);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in addEntry()", ex);
                 }
             }
         }
@@ -1170,6 +1324,8 @@ public class Database {
     }
     
     public boolean update(String keyColumn, String keyValue, String table, String column, String value) {
+        logger.log(DEBUG_NAME, "updating " + table + " entry");
+        
         if (connection != null && isOpen) {
             Statement s = null;
             try {
@@ -1179,12 +1335,12 @@ public class Database {
                 int n = s.executeUpdate(sql);
                 return n > 0;
             } catch (SQLException e) {
-                System.err.println("Error while updating " + table + " entry.\n" + e);
+                logger.logErr(DEBUG_NAME, "error while updating " + table + " entry", e);
             } finally {
                 try {
                     if (s != null) s.close();
                 } catch (SQLException e) {
-                    System.err.println("Failed to close Statement object.\n" + e);
+                    logger.logErr(DEBUG_NAME, "error while closing Statement object in update()", e);
                 }
             }
         }
