@@ -27,13 +27,18 @@ import org.xml.sax.SAXException;
  */
 public class Preferences {
 
+    private static final String DEBUG_NAME = "Preferences";
     private static final String PREF_FILENAME = "preferences.xml";
     private Document doc;
     private static Preferences instance;
     private boolean isLoaded = false;
+    
+    private final Logger logger;
 
     private Preferences() {
-        System.out.print("Creating instance of Preferences...");
+        logger = AppMain.getLogger();
+        logger.log(DEBUG_NAME, "creating preferences instance...");
+        
         try {
             File file = new File(PREF_FILENAME); // debug
             // File file = new File(filename); // export÷
@@ -42,9 +47,9 @@ public class Preferences {
             doc = builder.parse(file);
             doc.getDocumentElement().normalize();
             isLoaded = true;
-            System.out.println("DONE");
+            logger.log(DEBUG_NAME, "done");
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            System.err.println("FAILED\n" + e);
+            logger.logErr(DEBUG_NAME, "error while creating preferences instance", e);
         }
     }
 
@@ -135,16 +140,16 @@ public class Preferences {
     }
     
     public void saveXml() {
-        System.out.print("Saving preferences xml...");
+        logger.log(DEBUG_NAME, "saving preferences...");
         TransformerFactory factory = TransformerFactory.newInstance();
         try {
             Transformer transformer = factory.newTransformer();
             DOMSource source = new DOMSource(doc);
             StreamResult result = new StreamResult(new File(PREF_FILENAME));
             transformer.transform(source, result);
-            System.out.println("DONE");
+            logger.log(DEBUG_NAME, "done");
         } catch (TransformerException e) {
-            System.err.println("FAILED: " + e);
+            logger.logErr(DEBUG_NAME, "error while saving preferences", e);
         }
     }
 
