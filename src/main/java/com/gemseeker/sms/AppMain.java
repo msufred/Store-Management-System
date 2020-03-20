@@ -32,6 +32,9 @@ public class AppMain extends Application implements Initializable {
     private static final String TITLE = "LIVErary IT Solutions";
     private static final int WIDTH = 1280;
     private static final int HEIGHT = 700;
+    
+    private static final String DEBUG_NAME = "AppMain";
+    private static final boolean LOG_TO_FILE = false; // change to log to file
 
     // login
     @FXML private TextField userField;
@@ -45,8 +48,12 @@ public class AppMain extends Application implements Initializable {
     // controllers
     private MainController mainController;
     
+    private static Logger logger;
+    
     @Override
     public void start(Stage stage) throws Exception {
+        logger = new Logger(LOG_TO_FILE);
+        
         root = new StackPane();
         root.setStyle("-fx-background-color: #ffffff");
         Scene scene = new Scene(root, WIDTH, HEIGHT);
@@ -61,6 +68,8 @@ public class AppMain extends Application implements Initializable {
                 ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
             }
         });
+        
+        logger.log(DEBUG_NAME, "Starting application!");
         stage.show();
 
         loadPanels();
@@ -110,7 +119,9 @@ public class AppMain extends Application implements Initializable {
                 });
             } catch (SQLException ex) {
                 progressBar.setVisible(false);
+                
                 ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
+                logger.logErr(DEBUG_NAME, "failed to validate login username and password", ex);
             }
         });
         t.setDaemon(true);
@@ -118,6 +129,7 @@ public class AppMain extends Application implements Initializable {
     }
 
     private void loadPanels() {
+        logger.log(DEBUG_NAME, "loading fxml controllers...");
         // show progress bar while loading panels
         ProgressBarDialog.show();
         
@@ -140,9 +152,11 @@ public class AppMain extends Application implements Initializable {
     }
     
     public void changeController(Controller controller) {
+        logger.log(DEBUG_NAME, "changing controller to " + controller.getClass().getName());
+        
         Parent panel = controller.getContentPane();
         if (panel == null) {
-            System.out.println("content pane is null");
+            logger.log(DEBUG_NAME, "controller's content pane is null");
             return;
         }
         root.getChildren().clear();
@@ -152,5 +166,10 @@ public class AppMain extends Application implements Initializable {
 
     public static void main(String[] args) {
         launch(args);
+    }
+    
+    public static Logger getLogger() {
+        if (logger == null) logger = new Logger(LOG_TO_FILE);
+        return logger;
     }
 }
