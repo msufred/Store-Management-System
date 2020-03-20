@@ -1,6 +1,7 @@
 package com.gemseeker.sms;
 
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
 import javafx.collections.FXCollections;
@@ -120,6 +121,10 @@ public class Utils {
     
     public static Date getDateNow() {
         return Calendar.getInstance().getTime();
+    }
+    
+    public static int compare(Calendar cal1, Calendar cal2) {
+        return cal1.compareTo(cal2);
     }
     
     public static ObservableList<String> getProvinceList() {
