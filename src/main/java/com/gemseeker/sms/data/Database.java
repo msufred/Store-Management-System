@@ -14,6 +14,7 @@ import java.sql.Statement;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 /**
  *
  * @author gemini1991
@@ -37,7 +38,7 @@ public class Database {
     private PreparedStatement getAllServices;
     private PreparedStatement getAllHistory;
     
-    private Logger logger;
+    private final Logger logger;
     
     private Database() throws SQLException {
         logger = AppMain.getLogger();
@@ -746,10 +747,75 @@ public class Database {
     |                                                                   |
     *===================================================================*/
     
+    public BillingProcessed getBillingProcessedByID(int billingProcessedId) {
+        logger.log(DEBUG_NAME, "fetching billing processed with id: " + billingProcessedId);
+        if (connection != null && isOpen) {
+            Statement s = null;
+            ResultSet rs = null;
+            try {
+                s = connection.createStatement();
+                rs = s.executeQuery("SELECT * FROM `billings_processed` WHERE `id`='" + billingProcessedId + "'");
+                if (rs.next()) {
+                    BillingProcessed bp = new BillingProcessed();
+                    bp.setId(rs.getInt(1));
+                    bp.setBillingNo(rs.getInt(2));
+                    bp.setAmountDue(rs.getDouble(3));
+                    bp.setAmountPaid(rs.getDouble(4));
+                    bp.setDateOfTransaction(Utils.MYSQL_DATETIME_FORMAT.parse(rs.getString(5)));
+                    bp.setRemarks(rs.getString(6));
+                    bp.setBilling(getBilling(rs.getInt(2)));
+                    return bp;
+                }
+            } catch (SQLException | ParseException e) {
+                logger.logErr(DEBUG_NAME, "error while fetching billing processed with id: " + billingProcessedId, e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                    if (rs != null) rs.close();
+                } catch (SQLException e) {
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getBillingProcessedByID()", e);
+                }
+            }
+        }
+        return null;
+    }
+    
+    public BillingProcessed getBillingProcessed(int billingId, Date transactionDate) {
+        logger.log(DEBUG_NAME, "fetching billing processed for billing with id: " + billingId);
+        if (connection != null && isOpen) {
+            Statement s = null;
+            ResultSet rs = null;
+            try {
+                s = connection.createStatement();
+                rs = s.executeQuery("SELECT * FROM `billings_processed` WHERE `billing_no`='" + billingId + "' AND "
+                        + "`date_transaction`='" + Utils.MYSQL_DATETIME_FORMAT.format(transactionDate) + "'");
+                if (rs.next()) {
+                    BillingProcessed bp = new BillingProcessed();
+                    bp.setId(rs.getInt(1));
+                    bp.setBillingNo(rs.getInt(2));
+                    bp.setAmountDue(rs.getDouble(3));
+                    bp.setAmountPaid(rs.getDouble(4));
+                    bp.setDateOfTransaction(Utils.MYSQL_DATETIME_FORMAT.parse(rs.getString(5)));
+                    bp.setRemarks(rs.getString(6));
+                    bp.setBilling(getBilling(rs.getInt(2)));
+                    return bp;
+                }
+            } catch (SQLException | ParseException e) {
+                logger.logErr(DEBUG_NAME, "error while fetching billing processed for billing with id: " + billingId, e);
+            } finally {
+                try {
+                    if (s != null) s.close();
+                    if (rs != null) rs.close();
+                } catch (SQLException e) {
+                    logger.logErr(DEBUG_NAME, "error while closing Statement and ResultSet object in getBillingProcessedByID()", e);
+                }
+            }
+        }
+        return null;
+    }
+    
     public int addBillingProcessed(BillingProcessed billingProcessed) {
         logger.log(DEBUG_NAME, "adding billing processed entry");
-        
-        System.out.println("why");
         if (connection != null && isOpen) {
             Statement s = null;
             ResultSet rsKey = null;
