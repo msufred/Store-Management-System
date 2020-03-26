@@ -5,11 +5,12 @@ import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.User;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -31,6 +32,12 @@ public class UsersController extends Controller {
     @FXML private Button btnAdd;
     @FXML private Button btnEdit;
     @FXML private Button btnDelete;
+    
+    private final CompositeDisposable disposables;
+    
+    public UsersController() {
+        disposables = new CompositeDisposable();
+    }
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -65,22 +72,16 @@ public class UsersController extends Controller {
 
     public void refresh() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<User> users = database.getAllUsers();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> Database.getInstance().getAllUsers())
+                .subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(users -> {
                     ProgressBarDialog.close();
                     usersTable.setItems(FXCollections.observableArrayList(users));
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
 }
