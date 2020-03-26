@@ -16,6 +16,10 @@ import com.gemseeker.sms.data.Service;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.PaymentListCellFactory;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -70,9 +74,11 @@ public class AddWISPBillingController extends Controller {
     @FXML ChoiceBox<EnumBillingStatus> cbStatus;
     
     private final BillingsController billingsController;
+    private final CompositeDisposable disposables;
     
     public AddWISPBillingController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -145,6 +151,12 @@ public class AddWISPBillingController extends Controller {
     public void onResume() {
         super.onResume();
     }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
 
     public void show() {
         clearFields();
@@ -166,27 +178,24 @@ public class AddWISPBillingController extends Controller {
     
     private void loadServices() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Service> services = database.getAllServices();
-                Service dataplan = new Service();
-                dataplan.setName("Data Plan");
-                dataplan.setEstPrice(0);
-                services.add(0, dataplan);
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            ArrayList<Service> services = database.getAllServices();
+            Service dataplan = new Service();
+            dataplan.setName("Data Plan");
+            dataplan.setEstPrice(0);
+            services.add(0, dataplan);
+            return services;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(services -> {
                     ProgressBarDialog.close();
                     cbPaymentType.setItems(FXCollections.observableArrayList(services));
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void clearFields() {
@@ -220,21 +229,26 @@ public class AddWISPBillingController extends Controller {
         if (!account.getBalances().isEmpty()) {
             double balanceTotal = 0;
             for (Balance b : account.getBalances()) {
-                balanceTotal += b.getAmount();
+                if (!b.isIsPaid()) {
+                    balanceTotal += b.getAmount();
+                }
             }
             tfBalance.setText(balanceTotal + "");
         }
     }
     
     private void loadAccounts() {
-        try {
-            Database database = Database.getInstance();
-            ArrayList<Account> accts = database.getAllAccounts();
-            cbAccounts.setItems(FXCollections.observableArrayList(accts));
-        } catch (SQLException ex) {
-            Logger.getLogger(AddWISPBillingController.class.getName()).log(Level.SEVERE, null, ex);
-            if (stage != null) stage.close();
-        }
+        disposables.add(Observable.fromCallable(() -> {
+            return Database.getInstance().getAllAccounts();
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(accts -> {
+                    cbAccounts.setItems(FXCollections.observableArrayList(accts));
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ErrorDialog.show("Failed to load accounts.", err.getLocalizedMessage());
+                        if (stage != null) stage.close();
+                    }
+                }));
     }
     
     private Payment getPaymentInfo() {
@@ -275,35 +289,32 @@ public class AddWISPBillingController extends Controller {
     private void save() {
         ProgressBarDialog.show();
         Billing billing = getBillingInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean added = database.addBilling(billing);
-                
-                if (added) {
-                    // add to history
-                    History history = new History();
-                    history.setTitle("New WISP Billing");
-                    history.setDescription(String.format("Added new WISP billing amounting to Php %.2f, due on %s",
-                            billing.getAmount(), billing.getDueDate()));
-                    history.setDate(Utils.getDateNow());
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean added = database.addBilling(billing);
+
+            if (added) {
+                // add to history
+                History history = new History();
+                history.setTitle("New WISP Billing");
+                history.setDescription(String.format("Added new WISP billing amounting to Php %.2f, due on %s",
+                        billing.getAmount(), billing.getDueDate()));
+                history.setDate(Utils.getDateNow());
+                database.addHistory(history);
+            }
+            return added;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(added -> {
                     ProgressBarDialog.close();
                     if (!added) {
                         ErrorDialog.show("Database Error", "Failed to add new billing entry.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Billing getBillingInfo() {

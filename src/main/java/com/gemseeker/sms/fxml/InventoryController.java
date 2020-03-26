@@ -3,17 +3,16 @@ package com.gemseeker.sms.fxml;
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Loader;
 import com.gemseeker.sms.data.Database;
-import com.gemseeker.sms.data.Product;
-import com.gemseeker.sms.data.Service;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProductsTable;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import com.gemseeker.sms.fxml.components.ServicesTable;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -41,6 +40,11 @@ public class InventoryController extends Controller {
     
     private AddProductController addProductController;
     private AddServiceController addServiceController;
+    private final CompositeDisposable disposables;
+    
+    public InventoryController() {
+        disposables = new CompositeDisposable();
+    }
     
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -106,6 +110,12 @@ public class InventoryController extends Controller {
         super.onResume();
         refresh();
     }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
 
     public void refresh() {
         int index = cbSelection.getSelectionModel().getSelectedIndex();
@@ -122,48 +132,34 @@ public class InventoryController extends Controller {
     
     private void getProducts() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Product> products = database.getAllProducts();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> Database.getInstance().getAllProducts())
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(products -> {
                     ProgressBarDialog.close();
-                    if (products != null) {
-                        productsTable.setItems(FXCollections.observableArrayList(products));
+                    productsTable.setItems(FXCollections.observableArrayList(products));
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.toString());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }));
     }
     
     private void getServices() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Service> services = database.getAllServices();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> Database.getInstance().getAllServices())
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(services -> {
                     ProgressBarDialog.close();
-                    if (services != null) {
-                        servicesTable.setItems(FXCollections.observableArrayList(services));
+                    servicesTable.setItems(FXCollections.observableArrayList(services));
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.toString());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }));
     }
     
     private void disableActions(boolean disable) {

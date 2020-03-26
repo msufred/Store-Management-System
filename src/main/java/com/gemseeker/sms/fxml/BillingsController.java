@@ -7,20 +7,25 @@ import static com.gemseeker.sms.data.EnumBillingStatus.*;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Balance;
 import com.gemseeker.sms.data.Billing;
+import com.gemseeker.sms.data.BillingProcessed;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumBillingStatus;
 import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
-import com.gemseeker.sms.fxml.components.BillingDateTableCellFactory;
-import com.gemseeker.sms.fxml.components.BillingDateTableCellFactory2;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
-import com.gemseeker.sms.fxml.components.BillingNameTableCellFactory;
-import com.gemseeker.sms.fxml.components.BillingTableRow;
+import com.gemseeker.sms.fxml.components.BillingsTableHelper;
 import com.gemseeker.sms.fxml.components.InfoDialog;
+import com.gemseeker.sms.fxml.components.PaymentsTableHelper;
 import com.gemseeker.sms.fxml.components.QuestionDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import com.gemseeker.sms.fxml.print.PrintController;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -38,11 +43,9 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TitledPane;
-import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.VBox;
 
 /**
@@ -51,6 +54,7 @@ import javafx.scene.layout.VBox;
  */
 public class BillingsController extends Controller {
     
+    // <editor-fold desc="FXML Components" defaultstate="collapsed">
     // basic actions
     @FXML private Button btnEdit;
     @FXML private Button btnDelete;
@@ -74,36 +78,29 @@ public class BillingsController extends Controller {
     @FXML private MenuItem miCancelOrder;
     
     // PRINT actions
+    @FXML private MenuButton mbPrint;
     @FXML private MenuItem miPrintStatement;
     @FXML private MenuItem miPrintNotification;
+    @FXML private MenuItem miPrintReceipt;
     
     // Filter Actions
+    @FXML private ComboBox<String> cbSortBy;
     @FXML private ComboBox<String> cbMonth;
     @FXML private ComboBox<String> cbYear;
     
     @FXML private TableView<Billing> billingsTable;
-    @FXML private TableColumn<Billing, Date> colDateOfBilling;
-    @FXML private TableColumn<Billing, String> colAccountNo;
-    @FXML private TableColumn<Billing, Account> colName;
-    @FXML private TableColumn<Billing, String> colDueDate;
-    @FXML private TableColumn<Billing, Double> colAmount;
-    @FXML private TableColumn<Billing, String> colStatus;
-    @FXML private TableColumn<Billing, EnumBillingType> colType;
     
     // details group (billing breakdown)
     @FXML private TitledPane detailsGroup;
     @FXML private VBox vboxDetails;
     @FXML private TableView<Payment> paymentsTable;
-    @FXML private TableColumn<Payment, String> colDescription;
-    @FXML private TableColumn<Payment, Double> colCost;
-    @FXML private TableColumn<Payment, Integer> colQuantity;
-    @FXML private TableColumn<Payment, Double> colTotal;
     @FXML private Button btnAddItem;
     @FXML private Button btnEditItem;
     @FXML private Button btnDeleteItem;
     @FXML private TextField tfBalance;
     @FXML private TextField tfSubtotal;
     @FXML private TextField tfTotal;
+    // </editor-fold>
     
     private ContextMenu wispContextMenu;
     private MenuItem cmForPayment;
@@ -111,6 +108,7 @@ public class BillingsController extends Controller {
     private MenuItem cmExtendDueDate;
     private MenuItem cmPrintNotice;
     private MenuItem cmPrintStatement;
+    private MenuItem cmPrintReceipt;
 
     private AddWISPBillingController addWISPBillingController;
     private EditWISPBillingController editWISPBillingController;
@@ -125,7 +123,10 @@ public class BillingsController extends Controller {
     private ChangeDueDateController changeDueDateController;
     private AcceptPaymentController acceptPaymentController;
     
+    private PrintController printController;
     private PrintNoticeController printNoticeController;
+    private ReceiptFormController receiptFormController;
+    private NoticeFormController noticeFormController;
     
     private int mCurrentBillingIndex = -1; // current selected Billing entry in table
     private int mLastBillingIndex = -1; // holds the last index selected (can be used after refresh)
@@ -133,6 +134,12 @@ public class BillingsController extends Controller {
     // holds the Billing entries from the database
     // value change every refresh
     private ArrayList<Billing> mBillings;
+    
+    private final CompositeDisposable disposables;
+    
+    public BillingsController() {
+        disposables = new CompositeDisposable();
+    }
     
     @Override
     public void onLoadTask() {
@@ -149,7 +156,10 @@ public class BillingsController extends Controller {
         changeDueDateController = new ChangeDueDateController(this);
         acceptPaymentController = new AcceptPaymentController(this);
         
+        printController = new PrintController();
         printNoticeController = new PrintNoticeController(this);
+        receiptFormController = new ReceiptFormController();
+        noticeFormController = new NoticeFormController();
         
         Loader loader = Loader.getInstance();
         loader.load("fxml/add_wisp_billing.fxml", addWISPBillingController);
@@ -164,68 +174,41 @@ public class BillingsController extends Controller {
         loader.load("fxml/change_due_date.fxml", changeDueDateController);
         loader.load("fxml/accept_payment.fxml", acceptPaymentController);
         
+        loader.load("fxml/print.fxml", printController);
         loader.load("fxml/notice.fxml", printNoticeController);
+        loader.load("fxml/receipt2.fxml", receiptFormController);
+        loader.load("fxml/notice2.fxml", noticeFormController);
     }
 
-    // <editor-fold defaultstate="collapsed" desc="Initialize Method">
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        // create context menus
-        wispContextMenu = new ContextMenu();
-        cmForPayment = new MenuItem("For Payment");
-        cmForPayment.setOnAction(evt -> changeBillingForPayment());
-        cmReceivePayment = new MenuItem("Receive Payment");
-        cmReceivePayment.setOnAction(evt -> acceptPayment());
-        cmExtendDueDate = new MenuItem("Extend Due Date");
-        cmExtendDueDate.setOnAction(evt -> extendDueDate());
-        cmPrintNotice = new MenuItem("Print Notice");
-        cmPrintNotice.setOnAction(evt -> printNotification());
-        cmPrintStatement = new MenuItem("Print Statement");
-        cmPrintStatement.setOnAction(evt -> printStatement());
-        wispContextMenu.getItems().addAll(cmForPayment, cmReceivePayment, cmExtendDueDate, cmPrintNotice, cmPrintStatement);
+        // setup context menus
+        setupBillingsContextMenu();
         
-        // billings table and columns
-        colDateOfBilling.setCellValueFactory(new PropertyValueFactory<>("billingDate"));
-        colDateOfBilling.setCellFactory(new BillingDateTableCellFactory());
-        colAccountNo.setCellValueFactory(new PropertyValueFactory<>("accountNo"));
-        colName.setCellValueFactory(new PropertyValueFactory<>("account"));
-        colName.setCellFactory(new BillingNameTableCellFactory());
-        colDueDate.setCellValueFactory(new PropertyValueFactory<>("dueDate"));
-        colDueDate.setCellFactory(new BillingDateTableCellFactory2());
-        colAmount.setCellValueFactory(new PropertyValueFactory<>("amount"));
-        colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
-        colType.setCellValueFactory(new PropertyValueFactory<>("type"));
-        
-        billingsTable.setRowFactory(row -> new BillingTableRow());
+        // setup billings table
+        BillingsTableHelper.setupTable(billingsTable);
         
         // remember selected index
-        billingsTable.getSelectionModel().selectedIndexProperty().addListener((ov, prevIndex, currentIndex) -> {
+        billingsTable.getSelectionModel().selectedIndexProperty()
+                .addListener((ov, prevIndex, currentIndex) -> {
             mCurrentBillingIndex = currentIndex.intValue();
         });
         
-        billingsTable.getSelectionModel().selectedItemProperty().addListener((ov, b1, b2) -> {
+        billingsTable.getSelectionModel().selectedItemProperty()
+                .addListener((ov, b1, b2) -> {
             displaySelectedBilling(b2);
         });
         
         // adding context menus to billingsTable
         billingsTable.setContextMenu(wispContextMenu);
         
-        cbMonth.setItems(FXCollections.observableArrayList(
-                "All Months", "January", "February", "March", "April", "May", "June", "July",
-                "August", "September", "October", "November", "December"
-        ));
-        cbMonth.valueProperty().addListener(o -> filterMonthYear());
+        cbMonth.setItems(Utils.getMonthsList());
+        cbMonth.valueProperty().addListener(o -> filterTableByMonthYear());
         
-        cbYear.setItems(FXCollections.observableArrayList(
-                "All Years", "2019", "2020", "2021", "2022", "2024", "2025"
-        ));
-        cbYear.valueProperty().addListener(o -> filterMonthYear());
+        cbYear.setItems(Utils.getYearsList());
+        cbYear.valueProperty().addListener(o -> filterTableByMonthYear());
         
-        // details table & columns
-        colDescription.setCellValueFactory(new PropertyValueFactory<>("name"));
-        colCost.setCellValueFactory(new PropertyValueFactory<>("amount"));
-        colQuantity.setCellValueFactory(new PropertyValueFactory<>("quantity"));
-        colTotal.setCellValueFactory(new PropertyValueFactory<>("totalAmount"));
+        PaymentsTableHelper.setupTable(paymentsTable);
         
         paymentsTable.getSelectionModel().selectedItemProperty().addListener((ov, p1, p2) -> {
             disablePaymentActions(p2 == null);
@@ -247,17 +230,45 @@ public class BillingsController extends Controller {
         
         btnEdit.setOnAction(evt -> editBilling());
         btnDelete.setOnAction(evt -> deleteBilling());
-        btnRefresh.setOnAction(evt -> refresh());
+        btnRefresh.setOnAction(evt -> {
+            reEvaluateBillings();
+            refresh();
+        });
         
         miPrintNotification.setOnAction(evt -> printNotification());
         miPrintStatement.setOnAction(evt -> printStatement());
+        miPrintReceipt.setOnAction(evt -> printReceipt());
         
         // details group
         btnAddItem.setOnAction(evt -> showAddPayment());
         btnEditItem.setOnAction(evt -> editBillingPaymentItem());
         btnDeleteItem.setOnAction(evt -> deletePayment());
     }
-    // </editor-fold>
+    
+    private void setupBillingsContextMenu() {
+        wispContextMenu = new ContextMenu();
+        
+        cmForPayment = new MenuItem("For Payment");
+        cmForPayment.setOnAction(evt -> changeBillingForPayment());
+        
+        cmReceivePayment = new MenuItem("Receive Payment");
+        cmReceivePayment.setOnAction(evt -> acceptPayment());
+        
+        cmExtendDueDate = new MenuItem("Extend Due Date");
+        cmExtendDueDate.setOnAction(evt -> extendDueDate());
+        
+        cmPrintNotice = new MenuItem("Print Notice");
+        cmPrintNotice.setOnAction(evt -> printNotification());
+        
+        cmPrintStatement = new MenuItem("Print Statement");
+        cmPrintStatement.setOnAction(evt -> printStatement());
+        
+        cmPrintReceipt = new MenuItem("Print Receipt");
+        cmPrintReceipt.setOnAction(evt -> printReceipt());
+        
+        wispContextMenu.getItems().addAll(cmForPayment, cmReceivePayment,
+                cmExtendDueDate, cmPrintNotice, cmPrintStatement, cmPrintReceipt);
+    }
     
     @Override
     public void onResume() {
@@ -265,33 +276,95 @@ public class BillingsController extends Controller {
         refresh();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        addWISPBillingController.onDestroy();
+        editWISPBillingController.onDestroy();
+        addItemBillingController.onDestroy();
+        
+        addItemController.onDestroy();
+        editItemController.onDestroy();
+        addWISPController.onDestroy();
+        editWISPController.onDestroy();
+        
+        changeDueDateController.onDestroy();
+        acceptPaymentController.onDestroy();
+        
+        printController.onDestroy();
+        printNoticeController.onDestroy();
+        receiptFormController.onDestroy();
+        noticeFormController.onDestroy();
+        disposables.dispose();
+    }
+
     public void refresh() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
+        disposables.add(Observable.fromCallable(() -> {
                 Database database = Database.getInstance();
+                return database.getAllBillings();
+            }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                    .subscribe((billings) -> { 
+                        ProgressBarDialog.close();
+                        billingsTable.setItems(FXCollections.observableArrayList(billings));
+
+                        // select last selected billing
+                        if (mLastBillingIndex > -1) {
+                            billingsTable.getSelectionModel().select(mLastBillingIndex);
+                        }
+
+                        // this depends if user filtered table by month and year
+                        filterTableByMonthYear();
+                    }, err -> {
+                        if (err.getCause() != null) {
+                            ProgressBarDialog.close();
+                            ErrorDialog.show("Fetch Billings Error", err.getLocalizedMessage());
+                        }
+                    })
+        );
+    }
+    
+    /**
+     * Re-evaluates Billings entry. This is to check the due dates. If it is due
+     * or overdue, Billing entry is updated. This method is called before refresh.
+     */
+    private void reEvaluateBillings() {
+        ProgressBarDialog.show();
+        disposables.add(Completable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            if (mBillings == null) {
                 mBillings = database.getAllBillings();
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    billingsTable.setItems(FXCollections.observableArrayList(mBillings));
-                    
-                    // select last selected billing
-                    if (mLastBillingIndex > -1) {
-                        billingsTable.getSelectionModel().select(mLastBillingIndex);
-                    }
-                    
-                    // if filter month & year is specified
-                    filterMonthYear();
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(String.valueOf(ex.getErrorCode()), ex.toString());
-                });
             }
-        });
-        t.setDaemon(true);
-        t.start();
+
+            ArrayList<Billing> toUpdate = new ArrayList<>();
+            for (Billing b : mBillings) {
+                if (b.getStatus() != EnumBillingStatus.OVERDUE &&
+                        b.getStatus() != EnumBillingStatus.FOR_REVIEW &&
+                        b.getStatus() != EnumBillingStatus.PAID) {
+                    Date date = Utils.DATE_FORMAT_2.parse(b.getDueDate());
+                    Calendar cal = Calendar.getInstance();
+                    cal.setTime(date);
+                    Calendar now = Calendar.getInstance();
+
+                    if (Utils.compare(cal, now) < 0) {
+                        toUpdate.add(b);
+                    }
+                }
+            }
+
+            for (Billing b : toUpdate) {
+                database.updateBilling(b.getBillingId(), "status", EnumBillingStatus.OVERDUE.getName());
+            }
+            return null;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(() -> {
+                    ProgressBarDialog.close();
+                }, err -> {
+                    ProgressBarDialog.close();
+                    ErrorDialog.show("Error while re-evalation billings.", err.getLocalizedMessage());
+                })
+        );
     }
     
     private void displaySelectedBilling(Billing billing) {
@@ -318,6 +391,7 @@ public class BillingsController extends Controller {
         btnEdit.setDisable(disable);
         btnDelete.setDisable(disable);
         vboxDetails.setDisable(disable);
+        mbPrint.setDisable(disable);
     }
     
     private void disablePaymentActions(boolean disable) {
@@ -398,34 +472,32 @@ public class BillingsController extends Controller {
  
     private void doChangeBillingStatus(Billing billing, EnumBillingStatus status) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean updated = database.updateBilling(billing.getBillingId(), "status", status.getName());
-                if (updated) {
-                    History history = new History();
-                    history.setDate(Utils.getDateNow());
-                    history.setTitle("Changed Billing Status");
-                    history.setDescription(String.format("Change status of billing [ID: %d] to %s",
-                            billing.getBillingId(), status.getName()));
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean updated = database.updateBilling(billing.getBillingId(), "status", status.getName());
+            if (updated) {
+                History history = new History();
+                history.setDate(Utils.getDateNow());
+                history.setTitle("Changed Billing Status");
+                history.setDescription(String.format("Change status of billing [ID: %d] to %s",
+                        billing.getBillingId(), status.getName()));
+                database.addHistory(history);
+            }
+            return updated;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(updated -> {
                     ProgressBarDialog.close();
                     updateBillingTable();
                     if (!updated) {
-                        ErrorDialog.show("Oh snap!", "Failed to udpate billing status.");
+                        ErrorDialog.show("Change Status Error", "Failed to udpate billing status.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Change Status Error", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void acceptPayment() {
@@ -443,12 +515,18 @@ public class BillingsController extends Controller {
     
     private void printNotification() {
         if (billingsTable.getSelectionModel().getSelectedIndex() > -1) {
-            Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+            Billing billing = getSelectedBilling();
             if (billing != null) {
                 EnumBillingStatus status = billing.getStatus();
                 if (status != PAID && status != CANCELLED) {
-                    if (!printNoticeController.isLoaded()) printNoticeController.onLoadTask();
-                    printNoticeController.show(billing);
+//                    if (!printNoticeController.isLoaded()) printNoticeController.onLoadTask();
+//                    printNoticeController.show(billing);
+                    if (!noticeFormController.isLoaded()) noticeFormController.onLoadTask();
+                    noticeFormController.clear();
+                    noticeFormController.setBilling(billing);
+
+                    if (!printController.isLoaded()) printController.onLoadTask();
+                    printController.show(noticeFormController.getContentPane());
                 } else {
                     InfoDialog.show("Can't Print Notification", "You can only print notice "
                             + "statement if billing is not paid, cancelled or delivered.");
@@ -459,7 +537,7 @@ public class BillingsController extends Controller {
     
     private void printStatement() {
         if (billingsTable.getSelectionModel().getSelectedIndex() > -1) {
-        Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+        Billing billing = getSelectedBilling();
             if (billing != null) {
                 if (billing.getStatus() != PAID && billing.getStatus() != CANCELLED) {
                     // TODO
@@ -468,9 +546,56 @@ public class BillingsController extends Controller {
         }
     }
     
+    private void printReceipt() {
+        if (billingsTable.getSelectionModel().getSelectedIndex() > -1) {
+            Billing billing = getSelectedBilling();
+            if (billing != null) {
+                EnumBillingStatus status = billing.getStatus();
+                if (status != PAID) {
+                    InfoDialog.show("Can't Print Receipt", "This billing must be paid first before printing a receipt.");
+                } else {
+                    doPrintReceipt(billing.getBillingId(), billing.getDateUpdated());
+                }
+            }
+        }
+    }
+    
+    private void doPrintReceipt(int billingId, Date dateTransaction) {
+        ProgressBarDialog.show();
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            return database.getBillingProcessed(billingId, dateTransaction);
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(bp -> {
+                    ProgressBarDialog.close();
+                    if (bp != null) {
+                        printReceipt(bp);
+                    } else {
+                        ErrorDialog.show("Error Printing Receipt", "Failed to print receipt.");
+                    }
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Error Printing Receipt", err.getLocalizedMessage());
+                    }
+                }));
+    }
+    
+    public void printReceipt(BillingProcessed billingProcessed) {
+        if (billingProcessed != null) {
+            if (!receiptFormController.isLoaded()) receiptFormController.onLoadTask();
+            receiptFormController.clear();
+            receiptFormController.setBillingProcessed(billingProcessed);
+
+            if (!printController.isLoaded()) printController.onLoadTask();
+            printController.show(receiptFormController.getContentPane());
+        }
+    }
+    
     private void cancelOrder() {
         if (billingsTable.getSelectionModel().getSelectedIndex() > -1) {
-            Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+            Billing billing = getSelectedBilling();
             if (billing != null) {
                 if (billing.getStatus() != PAID && billing.getStatus() != CANCELLED &&
                         billing.getStatus() != DELIVERED) {
@@ -487,36 +612,34 @@ public class BillingsController extends Controller {
     
     private void doCancelOrder(Billing billing) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean updated = database.updateBilling(billing.getBillingId(), "status", CANCELLED.getName());
-                if (updated) {
-                    History history = new History();
-                    history.setDate(Utils.getDateNow());
-                    history.setTitle("Cancel Billing");
-                    history.setDescription(String.format("Cancelled billing with ID: %s", billing.getBillingId()));
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean updated = database.updateBilling(billing.getBillingId(), "status", CANCELLED.getName());
+            if (updated) {
+                History history = new History();
+                history.setDate(Utils.getDateNow());
+                history.setTitle("Cancel Billing");
+                history.setDescription(String.format("Cancelled billing with ID: %s", billing.getBillingId()));
+                database.addHistory(history);
+            }
+            return updated;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(updated -> {
                     ProgressBarDialog.close();
                     if (!updated) {
                         ErrorDialog.show("Failed to Cancel Order", "Error while cancelling order.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Failed to Cancel Order", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void deliverOrder() {
-        Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+        Billing billing = getSelectedBilling();
         if (billing != null) {
             if (billing.getStatus() != PAID && billing.getStatus() != CANCELLED &&
                     billing.getStatus() != DELIVERED) {
@@ -532,36 +655,34 @@ public class BillingsController extends Controller {
     
     private void doDeliverOrder(Billing billing) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean updated = database.updateBilling(billing.getBillingId(), "status", DELIVERED.getName());
-                if (updated) {
-                    History history = new History();
-                    history.setDate(Utils.getDateNow());
-                    history.setTitle("Order Delivered");
-                    history.setDescription(String.format("Delivered order for billing with ID: %s", billing.getBillingId()));
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean updated = database.updateBilling(billing.getBillingId(), "status", DELIVERED.getName());
+            if (updated) {
+                History history = new History();
+                history.setDate(Utils.getDateNow());
+                history.setTitle("Order Delivered");
+                history.setDescription(String.format("Delivered order for billing with ID: %s", billing.getBillingId()));
+                database.addHistory(history);
+            }
+            return updated;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(updated -> {
                     ProgressBarDialog.close();
                     if (!updated) {
                         ErrorDialog.show("Failed to set status to DELIVERED", "Error while changing order status to DELIVERED.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Failed to set status to DELIVERED", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void extendDueDate() {
-        Billing billing = billingsTable.getItems().get(mCurrentBillingIndex);
+        Billing billing = getSelectedBilling();
         if (billing != null) {
             EnumBillingStatus status = billing.getStatus();
             if (status != PAID && status != CANCELLED && status != DELIVERED) {
@@ -573,6 +694,10 @@ public class BillingsController extends Controller {
                 InfoDialog.show("Unable to extend due date.", "This billing is either paid or cancelled.");
             }
         }
+    }
+    
+    private Billing getSelectedBilling() {
+        return billingsTable.getItems().get(mCurrentBillingIndex);
     }
     
     /* ======================================================================= */
@@ -633,35 +758,31 @@ public class BillingsController extends Controller {
 
     private void doDeleteBilling(Billing billing) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            if (billing != null) {
-                try {
-                    Database database = Database.getInstance();
-                    boolean deleted = database.deleteBilling(billing);
-                    if (deleted) {
-                        History history = new History();
-                        history.setDate(Utils.getDateNow());
-                        history.setTitle("Delete Billing");
-                        history.setDescription(String.format("Deleted billing with ID: %s", billing.getBillingId()));
-                        database.addHistory(history);
-                    }
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        if (!deleted) {
-                            ErrorDialog.show("Delete Billing Error", "Failed to delete entry.");
-                        }
-                        refresh();
-                    });
-                } catch (SQLException ex) {
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        ErrorDialog.show(String.valueOf(ex.getErrorCode()), ex.toString());
-                    });
-                }
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean deleted = database.deleteBilling(billing);
+            if (deleted) {
+                History history = new History();
+                history.setDate(Utils.getDateNow());
+                history.setTitle("Delete Billing");
+                history.setDescription(String.format("Deleted billing with ID: %s", billing.getBillingId()));
+                database.addHistory(history);
             }
-        });
-        t.setDaemon(true);
-        t.start();
+            return deleted;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(deleted -> {
+                    ProgressBarDialog.close();
+                    if (!deleted) {
+                        ErrorDialog.show("Delete Billing Error", "Failed to delete entry.");
+                    }
+                    refresh();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Delete Billing Error", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void showAddPayment() {
@@ -791,57 +912,53 @@ public class BillingsController extends Controller {
      */
     private void doDeletePayment(Payment payment) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            if (payment != null) {
-                try {
-                    Database database = Database.getInstance();
-                    boolean deleted = database.deletePayment(payment);
-                    if (deleted) {
-                        // update inventory
-                        Product product = database.findProductByName(payment.getName());
-                        if (product != null) {
-                            int newProductCount = product.getCount() + payment.getQuantity();
-                            database.updateProductCount(product.getProductId(), newProductCount);
-                        }
-                        
-                        // update billing amount
-                        Billing billing = billingsTable.getSelectionModel().getSelectedItem();
-                        if (billing != null) {
-                            billing.removePayment(payment);
-                            database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
-                            
-                            // add to history
-                            History history = new History();
-                            history.setDate(Utils.getDateNow());
-                            history.setTitle("Billing Item Delete");
-                            history.setDescription(String.format("Item [%s] for billing [ID: %d] deleted.",
-                                    payment.getName(), billing.getBillingId()));
-                            database.addHistory(history);
-                        }
-                    }
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        if (!deleted) {
-                            ErrorDialog.show("Database Error", "Failed to delete entry.");
-                        } else {
-                            updateBillingTable();
-                        }
-                    });
-                } catch (SQLException ex) {
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        ErrorDialog.show(String.valueOf(ex.getErrorCode()), ex.getMessage());
-                    });
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean deleted = database.deletePayment(payment);
+            if (deleted) {
+                // update inventory
+                Product product = database.findProductByName(payment.getName());
+                if (product != null) {
+                    int newProductCount = product.getCount() + payment.getQuantity();
+                    database.updateProductCount(product.getProductId(), newProductCount);
+                }
+
+                // update billing amount
+                Billing billing = billingsTable.getSelectionModel().getSelectedItem();
+                if (billing != null) {
+                    billing.removePayment(payment);
+                    database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
+
+                    // add to history
+                    History history = new History();
+                    history.setDate(Utils.getDateNow());
+                    history.setTitle("Billing Item Delete");
+                    history.setDescription(String.format("Item [%s] for billing [ID: %d] deleted.",
+                            payment.getName(), billing.getBillingId()));
+                    database.addHistory(history);
                 }
             }
-        });
-        t.setDaemon(true);
-        t.start();
+            return deleted;
+        }).subscribeOn(Schedulers.newThread())
+                .observeOn(JavaFxScheduler.platform())
+                .subscribe(deleted -> {
+                    ProgressBarDialog.close();
+                    if (!deleted) {
+                        ErrorDialog.show("Delete Error", "Failed to delete entry.");
+                    } else {
+                        updateBillingTable();
+                    }
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Delete Error", err.getLocalizedMessage());
+                    }
+                }));
     }
     
-    private void filterMonthYear() {
+    private void filterTableByMonthYear() {
         if ((cbMonth.getValue() == null || cbYear.getValue() == null) ||
-                cbMonth.getValue().equals("All Months") && cbYear.getValue().equals("All Years")) {
+                cbMonth.getValue().equals("All") && cbYear.getValue().equals("All")) {
             billingsTable.setItems(FXCollections.observableArrayList(mBillings));
         } else {
             String month = cbMonth.getValue();

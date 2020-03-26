@@ -154,4 +154,15 @@ public class MainController extends Controller {
         mUser = user;
     }
     
+    public void dispose() {
+        summaryController.onDestroy();
+        billingsController.onDestroy();
+        accountssController.onDestroy();
+        salesController.onDestroy();
+        inventoryController.onDestroy();
+        usersController.onDestroy();
+        historyController.onDestroy();
+        settingsController.onDestroy();
+    }
+    
 }

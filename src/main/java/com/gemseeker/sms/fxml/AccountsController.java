@@ -10,13 +10,15 @@ import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.fxml.components.AccountNameTableCell;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -71,6 +73,11 @@ public class AccountsController extends Controller {
     @FXML Label lblElevation;
     
     private AddAccountController addAccountController;
+    private final CompositeDisposable disposables;
+    
+    public AccountsController() {
+        disposables = new CompositeDisposable();
+    }
 
     /**
      * Initialize controllers; load FXMLs
@@ -139,25 +146,27 @@ public class AccountsController extends Controller {
         refresh();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        addAccountController.onDestroy();
+        disposables.dispose();
+    }
+
     public void refresh() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Account> accts = database.getAllAccounts();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            return Database.getInstance().getAllAccounts();
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(accts -> {
+                    ProgressBarDialog.close();
                     accountsTable.setItems(FXCollections.observableArrayList(accts));
-                    ProgressBarDialog.close();
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(String.valueOf(ex.getErrorCode()), ex.toString());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void disableActions(boolean disable) {
@@ -209,27 +218,22 @@ public class AccountsController extends Controller {
             return;
         }
         
-        ProgressBarDialog.show(); 
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean deleted = database.deleteAccount(account);
-                Platform.runLater(() -> {
+        ProgressBarDialog.show();
+        disposables.add(Observable.fromCallable(() -> {
+            return Database.getInstance().deleteAccount(account);
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(deleted -> {
                     ProgressBarDialog.close();
                     if (deleted) {
                         refresh();
                     } else {
                         ErrorDialog.show("Account Delete Error", "Failed to delete account.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show("Account Delete Error", "Failed to delete account.");
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Account Delete Error", err.getLocalizedMessage());
+                    }
+                }));
     }
 }

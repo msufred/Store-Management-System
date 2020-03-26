@@ -12,6 +12,10 @@ import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.PaymentListCellFactory;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -55,10 +59,12 @@ public class EditWISPBillingController extends Controller {
     @FXML TextField tfStatus;
     
     private final BillingsController billingsController;
+    private final CompositeDisposable disposables;
     private Billing billing;
     
     public EditWISPBillingController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -85,6 +91,12 @@ public class EditWISPBillingController extends Controller {
     @Override
     public void onLoadTask() {
         super.onLoadTask(); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
     }
     
     public void show(int billingNo) {
@@ -119,29 +131,26 @@ public class EditWISPBillingController extends Controller {
     
     private void loadBilling(int billingNo) {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                Billing _billing = database.getBilling(billingNo);
-                if (_billing != null) {
-                    Account account = database.getAccount(_billing.getAccountNo());
-                    if (account != null) {
-                        _billing.setAccount(account);
-                    }
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            Billing _billing = database.getBilling(billingNo);
+            if (_billing != null) {
+                Account account = database.getAccount(_billing.getAccountNo());
+                if (account != null) {
+                    _billing.setAccount(account);
                 }
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    showDetails(_billing);
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
             }
-        });
-        t.setDaemon(true);
-        t.start();
+            return _billing;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(b -> {
+                    ProgressBarDialog.close();
+                    showDetails(b);
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void showDetails(Billing billing) {
@@ -177,32 +186,29 @@ public class EditWISPBillingController extends Controller {
     private void update() {
         ProgressBarDialog.show();
         Billing newBilling = getBillingInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();                
-                boolean updated = database.updateBilling(billing.getBillingId(), newBilling);
-                if (updated) {
-                    History history = new History();
-                    history.setDate(Calendar.getInstance().getTime());
-                    history.setTitle("Update Billing");
-                    history.setDescription(String.format("Updated WISP billing with ID: %d", billing.getBillingId()));
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();                
+            boolean updated = database.updateBilling(billing.getBillingId(), newBilling);
+            if (updated) {
+                History history = new History();
+                history.setDate(Calendar.getInstance().getTime());
+                history.setTitle("Update Billing");
+                history.setDescription(String.format("Updated WISP billing with ID: %d", billing.getBillingId()));
+                database.addHistory(history);
+            }
+            return updated;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(updated -> {
                     ProgressBarDialog.close();
                     if (!updated) {
                         ErrorDialog.show("Billing Update Error", "Failed to update billing entry.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void calculateTotal() {

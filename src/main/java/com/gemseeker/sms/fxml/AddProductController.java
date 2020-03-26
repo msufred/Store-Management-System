@@ -7,6 +7,10 @@ import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ResourceBundle;
@@ -36,9 +40,11 @@ public class AddProductController extends Controller {
     private Scene scene;
     
     private final InventoryController inventoryController;
+    private final CompositeDisposable disposables;
     
     public AddProductController(InventoryController inventoryController) {
         this.inventoryController = inventoryController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -67,6 +73,12 @@ public class AddProductController extends Controller {
     public void onResume() {
         super.onResume(); 
     }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
 
     public void show() {
         if (stage == null) {
@@ -94,34 +106,31 @@ public class AddProductController extends Controller {
     private void save() {
         ProgressBarDialog.show();
         Product product = getProductInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean added = database.addProduct(product);
-                if (added) {
-                    // add to history
-                    History history = new History();
-                    history.setTitle("New Product");
-                    history.setDescription(String.format("Added new product: %s, amount: Php %.2f, stock: %d", 
-                            product.getName(), product.getPrice(), product.getCount()));
-                    history.setDate(Utils.getDateNow());
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean added = database.addProduct(product);
+            if (added) {
+                // add to history
+                History history = new History();
+                history.setTitle("New Product");
+                history.setDescription(String.format("Added new product: %s, amount: Php %.2f, stock: %d", 
+                        product.getName(), product.getPrice(), product.getCount()));
+                history.setDate(Utils.getDateNow());
+                database.addHistory(history);
+            }
+            return added;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(added -> {
                     ProgressBarDialog.close();
                     if (!added) {
                         ErrorDialog.show("Database Error", "Failed to add product entry to the database.");
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Product getProductInfo() {

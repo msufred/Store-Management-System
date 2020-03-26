@@ -9,6 +9,10 @@ import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -47,8 +51,11 @@ public class AddItemController extends Controller {
     
     private int tempItemCount = 0;
     
+    private final CompositeDisposable disposables;
+    
     public AddItemController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
 
     @Override
@@ -87,6 +94,12 @@ public class AddItemController extends Controller {
         super.onResume();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
+    
     public void show(Billing billing) {
         clearFields();
         if (billing == null) {
@@ -120,23 +133,18 @@ public class AddItemController extends Controller {
     
     private void loadProducts() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Product> products = database.getAllProducts();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            return Database.getInstance().getAllProducts();
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(products -> {
                     ProgressBarDialog.close();
                     cbItems.setItems(FXCollections.observableArrayList(products));
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void calculate() {
@@ -148,36 +156,36 @@ public class AddItemController extends Controller {
     private void save() {
         ProgressBarDialog.show();
         Payment payment = getPaymentInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                int id = database.addPayment(payment);
-                
-                // if added to the database, update the inventory count
-                // and billing amount
-                if (id > -1) {
-                    // update inventory count
-                    Product product = cbItems.getValue();
-                    int newCount = product.getCount() - payment.getQuantity();
-                    database.updateProductCount(product.getProductId(), newCount);
-                    
-                    // update billing total amount
-                    // NOTE: Adding Payment to Billing automatically calculates the
-                    // Billing's total amount.
-                    payment.setPaymentId(id);
-                    billing.addPayment(payment);
-                    database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
-                    
-                    // add to history
-                    History history = new History();
-                    history.setTitle("Update Billing");
-                    history.setDescription(String.format("Updated billing with ID %d. Added new item for payment (%s - Php %.2f)",
-                            billing.getBillingId(), payment.getName(), payment.getAmount()));
-                    history.setDate(Utils.getDateNow());
-                    database.addHistory(history);
-                }
-                
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            int id = database.addPayment(payment);
+
+            // if added to the database, update the inventory count
+            // and billing amount
+            if (id > -1) {
+                // update inventory count
+                Product product = cbItems.getValue();
+                int newCount = product.getCount() - payment.getQuantity();
+                database.updateProductCount(product.getProductId(), newCount);
+
+                // update billing total amount
+                // NOTE: Adding Payment to Billing automatically calculates the
+                // Billing's total amount.
+                payment.setPaymentId(id);
+                billing.addPayment(payment);
+                database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
+
+                // add to history
+                History history = new History();
+                history.setTitle("Update Billing");
+                history.setDescription(String.format("Updated billing with ID %d. Added new item for payment (%s - Php %.2f)",
+                        billing.getBillingId(), payment.getName(), payment.getAmount()));
+                history.setDate(Utils.getDateNow());
+                database.addHistory(history);
+            }
+            return id;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(id -> {
                     ProgressBarDialog.close();
                     if (id == -1) {
                         ErrorDialog.show("Database Error", "Failed to add payment entry to the database.");
@@ -185,16 +193,12 @@ public class AddItemController extends Controller {
                         //billingsController.updateBillingRow(billing);
                         billingsController.updateBillingTable();
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Payment getPaymentInfo() {

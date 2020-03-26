@@ -13,12 +13,15 @@ import com.gemseeker.sms.data.Payment;
 import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
@@ -64,9 +67,11 @@ public class AddItemBillingController extends Controller {
     private Scene scene;
     
     private final BillingsController billingsController;
+    private final CompositeDisposable disposables;
     
     public AddItemBillingController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -137,6 +142,12 @@ public class AddItemBillingController extends Controller {
         super.onResume(); 
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
+
     public void show() {
         clearFields();
         if (stage == null) {
@@ -161,25 +172,22 @@ public class AddItemBillingController extends Controller {
     
     private void loadData() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<Product> products = database.getAllProducts();
-                ArrayList<Account> accounts = database.getAllAccounts();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            ArrayList<Product> products = database.getAllProducts();
+            ArrayList<Account> accounts = database.getAllAccounts();
+            return Arrays.asList(products, accounts);
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(entriesList -> {
                     ProgressBarDialog.close();
-                    cbItems.setItems(FXCollections.observableArrayList(products));
-                    cbAccounts.setItems(FXCollections.observableArrayList(accounts));
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                    cbItems.setItems(FXCollections.observableArrayList((ArrayList<Product>) entriesList.get(0)));
+                    cbAccounts.setItems(FXCollections.observableArrayList((ArrayList<Account>) entriesList.get(1)));
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Payment getPaymentInfo() {
@@ -210,43 +218,38 @@ public class AddItemBillingController extends Controller {
     private void save() {
         ProgressBarDialog.show();
         Billing billing = getBillingInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean added = database.addBilling(billing);
-                if (added) {
-                    // update inventory
-                    for (Payment p : billing.getPayments()) {
-                        Product product = database.findProductByName(p.getName());
-                        if (product != null) {
-                            int newCount = product.getCount() - p.getQuantity();
-                            database.updateProductCount(product.getProductId(), newCount);
-                        }
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean added = database.addBilling(billing);
+            if (added) {
+                // update inventory
+                for (Payment p : billing.getPayments()) {
+                    Product product = database.findProductByName(p.getName());
+                    if (product != null) {
+                        int newCount = product.getCount() - p.getQuantity();
+                        database.updateProductCount(product.getProductId(), newCount);
                     }
-                    
-                    // add to history
-                    History history = new History();
-                    history.setTitle("New Item Billing");
-                    history.setDescription(String.format("Added new ITEM billing amounting to Php %.2f, due on %s",
-                            billing.getAmount(), billing.getDueDate()));
-                    history.setDate(Utils.getDateNow());
-                    database.addHistory(history);
                 }
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    if (!added) {
-                        ErrorDialog.show("Database Error", "Failed to add billing entry to the database.");
-                    }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
+
+                // add to history
+                History history = new History();
+                history.setTitle("New Item Billing");
+                history.setDescription(String.format("Added new ITEM billing amounting to Php %.2f, due on %s",
+                        billing.getAmount(), billing.getDueDate()));
+                history.setDate(Utils.getDateNow());
+                database.addHistory(history);
             }
-        });
-        t.setDaemon(true);
-        t.start();
+            return added;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(added -> {
+                    ProgressBarDialog.close();
+                    if (!added) ErrorDialog.show("Database Error", "Failed to add billing entry to the database.");
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Billing getBillingInfo() {

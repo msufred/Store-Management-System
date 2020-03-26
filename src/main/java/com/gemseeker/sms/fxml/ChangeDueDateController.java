@@ -7,6 +7,10 @@ import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.Calendar;
@@ -35,10 +39,12 @@ public class ChangeDueDateController extends Controller {
     private Scene scene;
     
     private final BillingsController billingsController;
+    private final CompositeDisposable disposables;
     private Billing billing;
     
     public ChangeDueDateController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -77,36 +83,39 @@ public class ChangeDueDateController extends Controller {
         String dateStr = dpDueDate.getEditor().getText();
         if (!dateStr.isEmpty() && billing != null) {
             ProgressBarDialog.show();
-            Thread t = new Thread(() -> {
-                try {
-                    Database database = Database.getInstance();
-                    boolean updated = database.updateBilling(billing.getBillingId(), "due_date", dateStr);
-                    if (updated) {
-                        database.updateBilling(billing.getBillingId(), "date_updated",
-                                Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()));
-                        
-                        // add to history
-                        History history = new History();
-                        history.setTitle("Update Billing");
-                        history.setDescription(String.format("Updated billing with ID %d. Changed due date from %s to %s",
-                                billing.getBillingId(), billing.getDueDate(), dateStr));
-                        history.setDate(Utils.getDateNow());
-                        database.addHistory(history);
-                    }
-                    Platform.runLater(() -> {
+            disposables.add(Observable.fromCallable(() -> {
+                Database database = Database.getInstance();
+                boolean updated = database.updateBilling(billing.getBillingId(), "due_date", dateStr);
+                if (updated) {
+                    database.updateBilling(billing.getBillingId(), "date_updated",
+                            Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()));
+
+                    // add to history
+                    History history = new History();
+                    history.setTitle("Update Billing");
+                    history.setDescription(String.format("Updated billing with ID %d. Changed due date from %s to %s",
+                            billing.getBillingId(), billing.getDueDate(), dateStr));
+                    history.setDate(Utils.getDateNow());
+                    database.addHistory(history);
+                }
+                return updated;
+            }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                    .subscribe(updated -> {
                         ProgressBarDialog.close();
                         if (!updated) ErrorDialog.show("Oh Snap!", "Error while updating billing entry.");
                         else billingsController.updateBillingTable();
-                    });
-                } catch (SQLException ex) {
-                    Platform.runLater(() -> {
-                        ProgressBarDialog.close();
-                        ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                    });
-                }
-            });
-            t.setDaemon(true);
-            t.start();
+                    }, err -> {
+                        if (err.getCause() != null) {
+                            ProgressBarDialog.close();
+                            ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                        }
+                    }));
         }
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
     }
 }

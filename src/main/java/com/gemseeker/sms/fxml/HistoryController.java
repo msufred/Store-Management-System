@@ -3,16 +3,16 @@ package com.gemseeker.sms.fxml;
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
-import com.gemseeker.sms.fxml.components.BillingDateTableCell;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.HistoryDateTableCellFactory;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
@@ -29,6 +29,12 @@ public class HistoryController extends Controller {
     @FXML private TableColumn<History, Date> colDate;
     @FXML private TableColumn<History, String> colTitle;
     @FXML private TableColumn<History, String> colDescription;
+    
+    private final CompositeDisposable disposables;
+    
+    public HistoryController() {
+        disposables = new CompositeDisposable();
+    }
     
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -49,24 +55,25 @@ public class HistoryController extends Controller {
         refresh();
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
+    }
+    
     public void refresh() {
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                ArrayList<History> histories = database.getHistories();
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            return Database.getInstance().getHistories();
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(histories -> {
                     ProgressBarDialog.close();
                     historyTable.setItems(FXCollections.observableArrayList(histories));
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
 }

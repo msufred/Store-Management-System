@@ -11,6 +11,10 @@ import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -81,9 +85,11 @@ public class AddAccountController extends Controller {
     @FXML private Button btnCancel;
     
     private final AccountsController accountsController;
+    private final CompositeDisposable disposables;
     
     public AddAccountController(AccountsController accountsController) {
         this.accountsController = accountsController;
+        disposables = new CompositeDisposable();
     }
     
     @Override
@@ -100,14 +106,10 @@ public class AddAccountController extends Controller {
         
         cbProvince.setItems(Utils.getProvinceList());
         cbProvince.getSelectionModel().selectedItemProperty().addListener((o, s1, s2) -> {
-            if (s2 != null) {
-                cbCities.setItems(Utils.getCityList(s2));
-            }
+            if (s2 != null) cbCities.setItems(Utils.getCityList(s2));
         });
         cbCities.getSelectionModel().selectedItemProperty().addListener((o, s1, s2) -> {
-            if (s2 != null) {
-                cbBrgy.setItems(Utils.getBarangayList(s2));
-            }
+            if (s2 != null) cbBrgy.setItems(Utils.getBarangayList(s2));
         });
         
         cbAddInternet.selectedProperty().addListener((ov, s, selected) -> {
@@ -179,26 +181,27 @@ public class AddAccountController extends Controller {
     }
     
     private void generateAccountNo() {
-        try {
+        disposables.add(Observable.fromCallable(() -> {
             Database database = Database.getInstance();
             int count = database.getAccountsCount();
-            if (count == 0) {
-                tfAccountNo.setText("ACCT-0");
-            } else {
-                String accntNo;
-                while(true) {
-                    accntNo = "ACCT-" + count;
-                    if (database.hasAccountNo(accntNo)) {
-                        count++;
-                    } else {
-                        break;
-                    }
+            if (count == 0) return "ACCT-0";
+            else {
+                String acctNo;
+                while (true) {
+                    acctNo = "ACCT-" + count;
+                    if (database.hasAccountNo(acctNo)) count++;
+                    else break;
                 }
-                tfAccountNo.setText(accntNo);
+                return acctNo;
             }
-        } catch (SQLException ex) {
-            ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-        }
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(acctNo -> {
+                    tfAccountNo.setText(acctNo);
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ErrorDialog.show("Uh oh!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private void setupTextFields(TextField...textFields) {
@@ -225,36 +228,32 @@ public class AddAccountController extends Controller {
     private void save() {
         ProgressBarDialog.show();
         Account account = getAccountInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean added = database.addAccount(account);
-                // add to history if added
-                if (added) {
-                    History history = new History();
-                    history.setTitle("New Account");
-                    history.setTitle(String.format("Added new account: [%s] %s %s",
-                            account.getAccountNumber(),
-                            account.getFirstName(),
-                            account.getLastName()));
-                    history.setDate(Utils.getDateNow());
-                    database.addHistory(history);
-                }
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean added = database.addAccount(account);
+            if (added) {
+                History history = new History();
+                history.setTitle("New Account");
+                history.setTitle(String.format("Added new account: [%s] %s %s",
+                        account.getAccountNumber(),
+                        account.getFirstName(),
+                        account.getLastName()));
+                history.setDate(Utils.getDateNow());
+                database.addHistory(history);
+            }
+            return added;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(added -> {
                     ProgressBarDialog.close();
                     if (!added) {
                         ErrorDialog.show("Oh snap!", "Failed to add account entry to the dabatase.");
                     }
-                });
-            } catch (SQLException e) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(e.getErrorCode() + "", e.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Account getAccountInfo() {
@@ -343,5 +342,11 @@ public class AddAccountController extends Controller {
                 !tfIP02.getText().isEmpty() &&
                 !tfIP03.getText().isEmpty() &&
                 !tfIP04.getText().isEmpty();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
     }
 }

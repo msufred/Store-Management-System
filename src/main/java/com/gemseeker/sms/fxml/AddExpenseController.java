@@ -4,9 +4,13 @@ import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.Expense;
-import com.gemseeker.sms.data.Revenue;
+import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
 import java.text.ParseException;
@@ -42,9 +46,11 @@ public class AddExpenseController extends Controller {
     private Scene scene;
     
     private final SalesController salesController;
+    private final CompositeDisposable disposables;
     
     public AddExpenseController(SalesController salesController) {
         this.salesController = salesController;
+        disposables = new CompositeDisposable();
     }
 
     @Override
@@ -98,11 +104,20 @@ public class AddExpenseController extends Controller {
     private void save() {
         Expense expense = getExpenseInfo();
         ProgressBarDialog.show();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean added = database.addExpense(expense);
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean added = database.addExpense(expense);
+            if (added) {
+                // add to history
+                History history = new History();
+                history.setDate(Utils.getDateNow());
+                history.setTitle("New Expense Entry");
+                history.setDescription("Added new expense for " + expense.getType() + " with the amount of " + expense.getAmount());
+                database.addHistory(history);
+            }
+            return added;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(added -> {
                     ProgressBarDialog.close();
                     if (!added) {
                         ErrorDialog.show("Oh-snap!", "Failed to add expense entry. Try again.");
@@ -110,16 +125,12 @@ public class AddExpenseController extends Controller {
                         close();
                         salesController.refresh();
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Expense getExpenseInfo() {
@@ -136,5 +147,11 @@ public class AddExpenseController extends Controller {
         expense.setType(cbTypes.getValue());
         expense.setDescription(taDescription.getText());
         return expense;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
     }
 }

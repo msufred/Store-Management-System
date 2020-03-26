@@ -6,12 +6,14 @@ import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Payment;
-import com.gemseeker.sms.data.Product;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
+import io.reactivex.Observable;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
+import io.reactivex.schedulers.Schedulers;
 import java.net.URL;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.ResourceBundle;
 import javafx.application.Platform;
@@ -41,11 +43,13 @@ public class EditWISPController extends Controller {
     private Scene scene;
     
     private final BillingsController billingsController;
+    private final CompositeDisposable disposables;
     private Billing billing; // selected Billing entry
     private Payment payment; // selected Payment entry (belongs to Billing above)
     
     public EditWISPController(BillingsController billingsController) {
         this.billingsController = billingsController;
+        disposables = new CompositeDisposable();
     }
 
     @Override
@@ -72,6 +76,12 @@ public class EditWISPController extends Controller {
     @Override
     public void onResume() {
         super.onResume(); //To change body of generated methods, choose Tools | Templates.
+    }
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        disposables.dispose();
     }
 
     public void show(Billing billing, Payment payment) {
@@ -122,29 +132,29 @@ public class EditWISPController extends Controller {
     private void update() {
         ProgressBarDialog.show();
         Payment updatedPayment = getPaymentInfo();
-        Thread t = new Thread(() -> {
-            try {
-                Database database = Database.getInstance();
-                boolean updated = database.updatePayment(payment.getPaymentId(), updatedPayment);
-                if (updated) {
-                    // update billing amount
-                    // NOTE: Billing.updatePayment() calculates the new total amount
-                    // so theres no need to manually calculate it
-                    billing.updatePayment(updatedPayment);
-                    database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
-                    database.updateBilling(billing.getBillingId(), "date_updated",
-                            Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()));
-                    
-                    // add to history
-                    History history = new History();
-                    history.setDate(Calendar.getInstance().getTime());
-                    history.setTitle("Update Billing");
-                    history.setDescription(String.format("Updated billing with ID: %d. Updated item: %s",
-                            billing.getBillingId(), payment.getName()));
-                    database.addHistory(history);
-                }
-                
-                Platform.runLater(() -> {
+        disposables.add(Observable.fromCallable(() -> {
+            Database database = Database.getInstance();
+            boolean updated = database.updatePayment(payment.getPaymentId(), updatedPayment);
+            if (updated) {
+                // update billing amount
+                // NOTE: Billing.updatePayment() calculates the new total amount
+                // so theres no need to manually calculate it
+                billing.updatePayment(updatedPayment);
+                database.updateBilling(billing.getBillingId(), "amount", billing.getAmount() + "");
+                database.updateBilling(billing.getBillingId(), "date_updated",
+                        Utils.MYSQL_DATETIME_FORMAT.format(Calendar.getInstance().getTime()));
+
+                // add to history
+                History history = new History();
+                history.setDate(Calendar.getInstance().getTime());
+                history.setTitle("Update Billing");
+                history.setDescription(String.format("Updated billing with ID: %d. Updated item: %s",
+                        billing.getBillingId(), payment.getName()));
+                database.addHistory(history);
+            }
+            return updated;
+        }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
+                .subscribe(updated -> {
                     ProgressBarDialog.close();
                     if (!updated) {
                         ErrorDialog.show("Database Error", "Failed to update payment.");
@@ -153,16 +163,12 @@ public class EditWISPController extends Controller {
 //                        billingsController.updatePaymentRow(updatedPayment);
                         billingsController.updateBillingTable();
                     }
-                });
-            } catch (SQLException ex) {
-                Platform.runLater(() -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show(ex.getErrorCode() + "", ex.getLocalizedMessage());
-                });
-            }
-        });
-        t.setDaemon(true);
-        t.start();
+                }, err -> {
+                    if (err.getCause() != null) {
+                        ProgressBarDialog.close();
+                        ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
+                    }
+                }));
     }
     
     private Payment getPaymentInfo() {
