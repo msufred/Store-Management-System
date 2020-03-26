@@ -16,6 +16,8 @@ public class BillingProcessed implements IEntry {
     private double amountPaid;
     private Date dateOfTransaction;
     private String remarks;
+    
+    private Billing billing;
 
     public int getId() {
         return id;
@@ -63,6 +65,14 @@ public class BillingProcessed implements IEntry {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+    
+    public void setBilling(Billing billing) {
+        this.billing = billing;
+    }
+    
+    public Billing getBilling() {
+        return billing;
     }
 
     @Override
