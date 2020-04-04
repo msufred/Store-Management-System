@@ -1,8 +1,14 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
+import com.gemseeker.seekiconsfx.material.CreateIcon;
+import com.gemseeker.seekiconsfx.material.DeleteIcon;
+import com.gemseeker.seekiconsfx.material.RefreshIcon;
+import com.gemseeker.seekiconsfx.material.SearchIcon;
 import com.gemseeker.sms.Loader;
+import com.gemseeker.sms.SplitController;
+import com.gemseeker.sms.SplitController.Target;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractPanelController;
 import static com.gemseeker.sms.data.EnumBillingStatus.*;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Balance;
@@ -20,22 +26,20 @@ import com.gemseeker.sms.fxml.components.InfoDialog;
 import com.gemseeker.sms.fxml.components.PaymentsTableHelper;
 import com.gemseeker.sms.fxml.components.QuestionDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
-import com.gemseeker.sms.fxml.print.PrintController;
-import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
 import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -43,16 +47,17 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
-import javafx.scene.control.TitledPane;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 /**
  *
  * @author gemini1991
  */
-public class BillingsController extends Controller {
+public class BillingsController extends AbstractPanelController {
     
     // <editor-fold desc="FXML Components" defaultstate="collapsed">
     // basic actions
@@ -88,10 +93,12 @@ public class BillingsController extends Controller {
     @FXML private ComboBox<String> cbMonth;
     @FXML private ComboBox<String> cbYear;
     
+    @FXML private SplitPane splitPane;
+    
     @FXML private TableView<Billing> billingsTable;
     
     // details group (billing breakdown)
-    @FXML private TitledPane detailsGroup;
+    @FXML private HBox detailsGroup;
     @FXML private VBox vboxDetails;
     @FXML private TableView<Payment> paymentsTable;
     @FXML private Button btnAddItem;
@@ -109,24 +116,30 @@ public class BillingsController extends Controller {
     private MenuItem cmPrintNotice;
     private MenuItem cmPrintStatement;
     private MenuItem cmPrintReceipt;
-
-    private AddWISPBillingController addWISPBillingController;
-    private EditWISPBillingController editWISPBillingController;
-    private AddItemBillingController addItemBillingController;
     
-    private AddItemController addItemController;
-    private EditItemController editItemController;
-    private AddWISPController addWISPController;
-    private EditWISPController editWISPController;
+    // icons
+    private static final double ICON_SIZE = 12;
+    private final CreateIcon editIcon;
+    private final DeleteIcon deleteIcon;
+    private final RefreshIcon refreshIcon;
+    private final SearchIcon searchIcon;
+
+    private final AddWISPBillingController addWISPBillingController = new AddWISPBillingController(this);
+    private final EditWISPBillingController editWISPBillingController = new EditWISPBillingController(this);
+    private final AddItemBillingController addItemBillingController = new AddItemBillingController(this);
+    
+    private final AddItemController addItemController = new AddItemController(this);
+    private final EditItemController editItemController = new EditItemController(this);
+    private final AddWISPController addWISPController = new AddWISPController(this);
+    private final EditWISPController editWISPController = new EditWISPController(this);
     
     // WISP specific dialogs
-    private ChangeDueDateController changeDueDateController;
-    private AcceptPaymentController acceptPaymentController;
+    private final ChangeDueDateController changeDueDateController = new ChangeDueDateController(this);
+    private final AcceptPaymentController acceptPaymentController = new AcceptPaymentController(this);
     
-    private PrintController printController;
-    private PrintNoticeController printNoticeController;
-    private ReceiptFormController receiptFormController;
-    private NoticeFormController noticeFormController;
+    private final PrintController printController = new PrintController();
+    private final ReceiptFormController receiptFormController = new ReceiptFormController();
+    private final NoticeFormController noticeFormController = new NoticeFormController();
     
     private int mCurrentBillingIndex = -1; // current selected Billing entry in table
     private int mLastBillingIndex = -1; // holds the last index selected (can be used after refresh)
@@ -136,52 +149,39 @@ public class BillingsController extends Controller {
     private ArrayList<Billing> mBillings;
     
     private final CompositeDisposable disposables;
+    private SplitController splitController;
     
     public BillingsController() {
         disposables = new CompositeDisposable();
-    }
-    
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-        addWISPBillingController = new AddWISPBillingController(this);
-        editWISPBillingController = new EditWISPBillingController(this);
-        addItemBillingController = new AddItemBillingController(this);
-        
-        addItemController = new AddItemController(this);
-        editItemController = new EditItemController(this);
-        addWISPController = new AddWISPController(this);
-        editWISPController = new EditWISPController(this);
-        
-        changeDueDateController = new ChangeDueDateController(this);
-        acceptPaymentController = new AcceptPaymentController(this);
-        
-        printController = new PrintController();
-        printNoticeController = new PrintNoticeController(this);
-        receiptFormController = new ReceiptFormController();
-        noticeFormController = new NoticeFormController();
+        editIcon = new CreateIcon(ICON_SIZE);
+        deleteIcon = new DeleteIcon(ICON_SIZE);
+        refreshIcon = new RefreshIcon(ICON_SIZE + 4);
+        searchIcon = new SearchIcon(ICON_SIZE);
         
         Loader loader = Loader.getInstance();
-        loader.load("fxml/add_wisp_billing.fxml", addWISPBillingController);
-        loader.load("fxml/edit_wisp_billing.fxml", editWISPBillingController);
-        loader.load("fxml/add_item_billing.fxml", addItemBillingController);
-        
-        loader.load("fxml/add_item.fxml", addItemController);
-        loader.load("fxml/edit_item.fxml", editItemController);
-        loader.load("fxml/add_wisp.fxml", addWISPController);
-        loader.load("fxml/edit_wisp.fxml", editWISPController);
-        
-        loader.load("fxml/change_due_date.fxml", changeDueDateController);
-        loader.load("fxml/accept_payment.fxml", acceptPaymentController);
-        
-        loader.load("fxml/print.fxml", printController);
-        loader.load("fxml/notice.fxml", printNoticeController);
         loader.load("fxml/receipt2.fxml", receiptFormController);
         loader.load("fxml/notice2.fxml", noticeFormController);
     }
 
     @Override
-    public void initialize(URL location, ResourceBundle resources) {
+    protected void makePanel() {
+        final URL fxmlURL = BillingsController.class.getResource("billings.fxml");
+        final FXMLLoader loader = new FXMLLoader();
+        loader.setController(this);
+        loader.setLocation(fxmlURL);
+        try {
+            setPanel(loader.load());
+            controllerDidLoadFxml();
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException("Failed to load " + fxmlURL.getFile());
+        }
+    }
+    
+    private void controllerDidLoadFxml() {
+        assert getPanel() != null;
+        
+        // Init components and listeners
+        
         // setup context menus
         setupBillingsContextMenu();
         
@@ -214,8 +214,8 @@ public class BillingsController extends Controller {
             disablePaymentActions(p2 == null);
         });
         
-        miAddWISPBilling.setOnAction(evt -> showAddWISPBilling());
-        miAddItemBilling.setOnAction(evt -> showAddItemBilling());
+        miAddWISPBilling.setOnAction(evt -> addWISPBillingController.openWindow());
+        miAddItemBilling.setOnAction(evt -> addItemBillingController.openWindow());
         
         // WISP actions
         miForPaymentWISP.setOnAction(evt -> changeBillingForPayment());
@@ -228,10 +228,14 @@ public class BillingsController extends Controller {
         miDeliverOrder.setOnAction(evt -> deliverOrder());
         miExtendDueDateItem.setOnAction(evt -> extendDueDate());
         
+        btnEdit.setGraphic(editIcon);
         btnEdit.setOnAction(evt -> editBilling());
+        
+        btnDelete.setGraphic(deleteIcon);
         btnDelete.setOnAction(evt -> deleteBilling());
+        
+        btnRefresh.setGraphic(refreshIcon);
         btnRefresh.setOnAction(evt -> {
-            reEvaluateBillings();
             refresh();
         });
         
@@ -243,8 +247,10 @@ public class BillingsController extends Controller {
         btnAddItem.setOnAction(evt -> showAddPayment());
         btnEditItem.setOnAction(evt -> editBillingPaymentItem());
         btnDeleteItem.setOnAction(evt -> deletePayment());
+        
+        splitController = new SplitController(splitPane, Target.LAST);
     }
-    
+
     private void setupBillingsContextMenu() {
         wispContextMenu = new ContextMenu();
         
@@ -269,30 +275,10 @@ public class BillingsController extends Controller {
         wispContextMenu.getItems().addAll(cmForPayment, cmReceivePayment,
                 cmExtendDueDate, cmPrintNotice, cmPrintStatement, cmPrintReceipt);
     }
-    
-    @Override
-    public void onResume() {
-        super.onResume(); 
-        refresh();
-    }
 
     @Override
-    public void onDestroy() {
-        super.onDestroy();
-        addWISPBillingController.onDestroy();
-        editWISPBillingController.onDestroy();
-        addItemBillingController.onDestroy();
-        
-        addItemController.onDestroy();
-        editItemController.onDestroy();
-        addWISPController.onDestroy();
-        editWISPController.onDestroy();
-        
-        changeDueDateController.onDestroy();
-        acceptPaymentController.onDestroy();
-        
-        printController.onDestroy();
-        printNoticeController.onDestroy();
+    public void dispose() {
+        super.dispose();
         receiptFormController.onDestroy();
         noticeFormController.onDestroy();
         disposables.dispose();
@@ -302,6 +288,8 @@ public class BillingsController extends Controller {
         ProgressBarDialog.show();
         disposables.add(Observable.fromCallable(() -> {
                 Database database = Database.getInstance();
+                ArrayList<Billing> billings = database.getAllBillings();
+                reEvaluateBillings(database, billings);
                 return database.getAllBillings();
             }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
                     .subscribe((billings) -> { 
@@ -311,6 +299,8 @@ public class BillingsController extends Controller {
                         // select last selected billing
                         if (mLastBillingIndex > -1) {
                             billingsTable.getSelectionModel().select(mLastBillingIndex);
+                        } else {
+                            splitController.setTargetVisible(false);
                         }
 
                         // this depends if user filtered table by month and year
@@ -327,44 +317,28 @@ public class BillingsController extends Controller {
     /**
      * Re-evaluates Billings entry. This is to check the due dates. If it is due
      * or overdue, Billing entry is updated. This method is called before refresh.
+     * This method MUST NOT be called in JavaFX Application Thread.
      */
-    private void reEvaluateBillings() {
-        ProgressBarDialog.show();
-        disposables.add(Completable.fromCallable(() -> {
-            Database database = Database.getInstance();
-            if (mBillings == null) {
-                mBillings = database.getAllBillings();
-            }
+    private void reEvaluateBillings(Database database, ArrayList<Billing> billings) throws Exception {
+        ArrayList<Billing> toUpdate = new ArrayList<>();
+        for (Billing b : billings) {
+            if (b.getStatus() != EnumBillingStatus.OVERDUE &&
+                    b.getStatus() != EnumBillingStatus.FOR_REVIEW &&
+                    b.getStatus() != EnumBillingStatus.PAID) {
+                Date date = Utils.DATE_FORMAT_2.parse(b.getDueDate());
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(date);
+                Calendar now = Calendar.getInstance();
 
-            ArrayList<Billing> toUpdate = new ArrayList<>();
-            for (Billing b : mBillings) {
-                if (b.getStatus() != EnumBillingStatus.OVERDUE &&
-                        b.getStatus() != EnumBillingStatus.FOR_REVIEW &&
-                        b.getStatus() != EnumBillingStatus.PAID) {
-                    Date date = Utils.DATE_FORMAT_2.parse(b.getDueDate());
-                    Calendar cal = Calendar.getInstance();
-                    cal.setTime(date);
-                    Calendar now = Calendar.getInstance();
-
-                    if (Utils.compare(cal, now) < 0) {
-                        toUpdate.add(b);
-                    }
+                if (Utils.compare(cal, now) < 0) {
+                    toUpdate.add(b);
                 }
             }
+        }
 
-            for (Billing b : toUpdate) {
-                database.updateBilling(b.getBillingId(), "status", EnumBillingStatus.OVERDUE.getName());
-            }
-            return null;
-        }).subscribeOn(Schedulers.newThread())
-                .observeOn(JavaFxScheduler.platform())
-                .subscribe(() -> {
-                    ProgressBarDialog.close();
-                }, err -> {
-                    ProgressBarDialog.close();
-                    ErrorDialog.show("Error while re-evalation billings.", err.getLocalizedMessage());
-                })
-        );
+        for (Billing b : toUpdate) {
+            database.updateBilling(b.getBillingId(), "status", EnumBillingStatus.OVERDUE.getName());
+        }
     }
     
     private void displaySelectedBilling(Billing billing) {
@@ -379,10 +353,10 @@ public class BillingsController extends Controller {
                 mbWISP.setDisable(false);
                 mbItems.setDisable(true);
             }
-            if (!detailsGroup.isExpanded()) detailsGroup.setExpanded(true);
+            splitController.setTargetVisible(true);
             showPaymentDetails(billing);
         } else {
-            if (detailsGroup.isExpanded()) detailsGroup.setExpanded(false);
+            splitController.setTargetVisible(false);
             clearPaymentsTable();
         }
     }
@@ -418,7 +392,6 @@ public class BillingsController extends Controller {
                         }
                     }
                 }
-                
             }
         }
         tfBalance.setText(tBalance + "");
@@ -429,21 +402,6 @@ public class BillingsController extends Controller {
     private void clearPaymentsTable() {
         paymentsTable.getItems().clear();
     }
-    
-    private void showAddItemBilling() {
-        if (addItemBillingController != null) {
-            if (!addItemBillingController.isLoaded()) addItemBillingController.onLoadTask();
-            addItemBillingController.show();
-        }
-    }
-
-    private void showAddWISPBilling() {
-        if (addWISPBillingController != null) {
-            if (!addWISPBillingController.isLoaded()) addWISPBillingController.onLoadTask();
-            addWISPBillingController.show();
-        }
-    }
-    
     
     /* ======================================================================= */
     /*                       Billing Actions (WISP & Item)                     */
@@ -505,8 +463,7 @@ public class BillingsController extends Controller {
         if (billing != null) {
             EnumBillingStatus status = billing.getStatus();
             if (status != PAID && status != CANCELLED) {
-                if (!acceptPaymentController.isLoaded()) acceptPaymentController.onLoadTask();
-                acceptPaymentController.show(billing);
+                acceptPaymentController.openWindow(billing);
             } else {
                 InfoDialog.show("Can't Accept Payment", "This billing is either paid or cancelled.");
             }
@@ -524,9 +481,8 @@ public class BillingsController extends Controller {
                     if (!noticeFormController.isLoaded()) noticeFormController.onLoadTask();
                     noticeFormController.clear();
                     noticeFormController.setBilling(billing);
-
-                    if (!printController.isLoaded()) printController.onLoadTask();
-                    printController.show(noticeFormController.getContentPane());
+                    
+                    printController.openWindow(noticeFormController.getContentPane());
                 } else {
                     InfoDialog.show("Can't Print Notification", "You can only print notice "
                             + "statement if billing is not paid, cancelled or delivered.");
@@ -587,9 +543,7 @@ public class BillingsController extends Controller {
             if (!receiptFormController.isLoaded()) receiptFormController.onLoadTask();
             receiptFormController.clear();
             receiptFormController.setBillingProcessed(billingProcessed);
-
-            if (!printController.isLoaded()) printController.onLoadTask();
-            printController.show(receiptFormController.getContentPane());
+            printController.openWindow(receiptFormController.getContentPane());
         }
     }
     
@@ -686,10 +640,7 @@ public class BillingsController extends Controller {
         if (billing != null) {
             EnumBillingStatus status = billing.getStatus();
             if (status != PAID && status != CANCELLED && status != DELIVERED) {
-                if (changeDueDateController != null) {
-                    if (!changeDueDateController.isLoaded()) changeDueDateController.onLoadTask();
-                    changeDueDateController.show(billing);
-                }
+                changeDueDateController.openWindow(billing);
             } else {
                 InfoDialog.show("Unable to extend due date.", "This billing is either paid or cancelled.");
             }
@@ -722,10 +673,7 @@ public class BillingsController extends Controller {
                 InfoDialog.show("Unable to update billing!", "The status of this billing "
                         + "doesn't allow the updating of this item.");
             } else {
-                if (editWISPBillingController != null) {
-                    if (!editWISPBillingController.isLoaded()) editWISPBillingController.onLoadTask();
-                    editWISPBillingController.show(billingSelected.getBillingId());
-                }
+                editWISPBillingController.openWindow(billingSelected.getBillingId());
             }
         }
     }
@@ -801,10 +749,7 @@ public class BillingsController extends Controller {
             InfoDialog.show("Unable to add item!", "The status of this billing "
                     + "doesn't allow adding new item.");
         } else {
-            if (addWISPController != null) {
-                if (!addWISPController.isLoaded()) addWISPController.onLoadTask();
-                addWISPController.show(billing);
-            }
+            addWISPController.openWindow(billing);
         }
     }
     
@@ -813,10 +758,7 @@ public class BillingsController extends Controller {
             InfoDialog.show("Unable to add item!", "The status of this billing "
                     + "doesn't allow adding new item.");
         } else {
-            if (addItemController != null) {
-                if (!addItemController.isLoaded()) addItemController.onLoadTask();
-                addItemController.show(billing);
-            }
+            addItemController.openWindow(billing);
         }
     }
     
@@ -844,10 +786,7 @@ public class BillingsController extends Controller {
             } else {
                 Payment paymentSelected = paymentsTable.getSelectionModel().getSelectedItem();
                 if (paymentSelected != null) {
-                    if (editItemController != null) {
-                        if (!editItemController.isLoaded()) editItemController.onLoadTask();
-                        editItemController.show(billingSelected, paymentSelected);
-                    }
+                    editItemController.openWindow(billingSelected, paymentSelected);
                 }
             }
         }
@@ -862,10 +801,7 @@ public class BillingsController extends Controller {
             } else {
                 Payment paymentSelected = paymentsTable.getSelectionModel().getSelectedItem();
                 if (paymentSelected != null) {
-                    if (editWISPController != null) {
-                        if (!editWISPController.isLoaded()) editWISPController.onLoadTask();
-                        editWISPController.show(billingSelected, paymentSelected);
-                    }
+                    editWISPController.openWindow(billingSelected, paymentSelected);
                 }
             }
         }

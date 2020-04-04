@@ -2,6 +2,7 @@ package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
@@ -28,12 +29,13 @@ import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddWISPController extends Controller {
+public class AddWISPController extends AbstractFxmlWindowController {
     
     @FXML ComboBox<Service> cbItems;
     @FXML TextField tfPrice;
@@ -42,20 +44,18 @@ public class AddWISPController extends Controller {
     @FXML Button btnCancel;
     @FXML Button btnAdd;
     
-    private Stage stage;
-    private Scene scene;
-    
     private Billing billing;
     private final BillingsController billingsController;
-    private CompositeDisposable disposables;
+    private final CompositeDisposable disposables;
     
     public AddWISPController(BillingsController billingsController) {
+        super(AddWISPController.class.getResource("add_wisp.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         Utils.setAsNumericalTextField(tfPrice);
         
         cbItems.valueProperty().addListener((o, s1, s2) -> {
@@ -70,11 +70,11 @@ public class AddWISPController extends Controller {
         spQuantity.valueProperty().addListener((ov, v1, v2) -> calculate());
         Utils.setAsIntegerTextField(spQuantity.getEditor());
         
-        btnCancel.setOnAction(evt -> close());
+        btnCancel.setOnAction(evt -> closeWindow());
         btnAdd.setOnAction(evt -> {
             if (fieldsValidated()) {
                 save();
-                close();
+                closeWindow();
             } else {
                 ErrorDialog.show("Please fill in empty fields.", "You might've missed some fields.");
             }
@@ -82,43 +82,15 @@ public class AddWISPController extends Controller {
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask(); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume(); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
     }
-    
-    public void show(Billing billing) {
-        clearFields();
-        if (billing == null) {
-            ErrorDialog.show("OMG!", "No selected billing entry!");
-            return;
-        }
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add WISP Item");
-            stage.initModality(Modality.APPLICATION_MODAL);
-            
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.setAlwaysOnTop(true);
-        }
-        stage.show();
+
+    public void openWindow(Billing billing) {
+        openWindow(); 
         this.billing = billing;
+        clearFields();
         loadServices();
-    }
-    
-    public void close() {
-        if(stage != null) stage.close();
     }
     
     private void clearFields() {

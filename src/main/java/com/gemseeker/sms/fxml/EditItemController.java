@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
@@ -13,25 +13,19 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.util.Calendar;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class EditItemController extends Controller {
+public class EditItemController extends AbstractFxmlWindowController {
 
     @FXML private TextField tfName;
     @FXML private TextField tfPrice;
@@ -41,9 +35,6 @@ public class EditItemController extends Controller {
     @FXML private Button btnCancel;
     @FXML private Button btnUpdate;
 
-    private Stage stage;
-    private Scene scene;
-
     private final BillingsController billingsController;
     private Billing billing; // selected Billing entry
     private Payment payment; // selected Payment entry (belongs to Billing above)
@@ -52,12 +43,13 @@ public class EditItemController extends Controller {
     private final CompositeDisposable disposables;
     
     public EditItemController(BillingsController billingsController) {
+        super(EditItemController.class.getResource("edit_item.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         spQuantity.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 100));
         spQuantity.valueProperty().addListener((ov, v1, v2) -> {
             if (product != null && payment != null) {
@@ -67,55 +59,23 @@ public class EditItemController extends Controller {
 
         btnUpdate.setOnAction(evt -> {
             update();
-            close();
+            closeWindow();
         });
 
-        btnCancel.setOnAction(evt -> close());
+        btnCancel.setOnAction(evt -> closeWindow());
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask(); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume(); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
     }
-
-    public void show(Billing billing, Payment payment) {
+    
+    public void openWindow(Billing billing, Payment payment) {
+        openWindow(); // AbstractFxmlWindowController
         clearFields();
-        // making sure Billing and Payment entries are not null!
-        if (billing == null || payment == null) {
-            ErrorDialog.show("Item Update Error", "No Billing and Payment entry selected.");
-            return;
-        }
-
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Edit Item Payment");
-            stage.initModality(Modality.APPLICATION_MODAL);
-
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.setAlwaysOnTop(true);
-        }
-        stage.show();
         this.billing = billing;
         this.payment = payment;
         showDetails();
-    }
-
-    public void close() {
-        if (stage != null) {
-            stage.close();
-        }
     }
 
     private void showDetails() {

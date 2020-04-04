@@ -1,7 +1,6 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
-import com.gemseeker.sms.Loader;
+import com.gemseeker.sms.core.AbstractPanelController;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.ProductsTable;
@@ -11,10 +10,11 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
 import java.net.URL;
-import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.layout.Priority;
@@ -24,7 +24,7 @@ import javafx.scene.layout.VBox;
  *
  * @author gemini1991
  */
-public class InventoryController extends Controller {
+public class InventoryController extends AbstractPanelController {
     
     @FXML VBox vbox;
     @FXML ChoiceBox<String> cbSelection;
@@ -38,16 +38,28 @@ public class InventoryController extends Controller {
     
     private boolean isProduct = true;
     
-    private AddProductController addProductController;
-    private AddServiceController addServiceController;
-    private final CompositeDisposable disposables;
-    
-    public InventoryController() {
-        disposables = new CompositeDisposable();
+    private final AddProductController addProductController = new AddProductController(this);
+    private final AddServiceController addServiceController = new AddServiceController(this);
+    private final CompositeDisposable disposables = new CompositeDisposable();
+
+    @Override
+    protected void makePanel() {
+        final URL fxmlURL = InventoryController.class.getResource("inventory.fxml");
+        final FXMLLoader loader = new FXMLLoader();
+        loader.setController(this);
+        loader.setLocation(fxmlURL);
+        try {
+            setPanel(loader.load());
+            controllerDidLoadFxml();
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException("Failed to load " + fxmlURL.getFile());
+        }
     }
     
-    @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    private void controllerDidLoadFxml() {
+        assert getPanel() != null;
+        
+        // Init components and listeners
         productsTable = new ProductsTable();
         VBox.setVgrow(productsTable, Priority.ALWAYS);
         productsTable.getSelectionModel().selectedItemProperty().addListener((o, p1, p2) -> {
@@ -81,39 +93,16 @@ public class InventoryController extends Controller {
         
         btnAdd.setOnAction(evt -> {
             if (isProduct) {
-                if (addProductController != null) {
-                    if (!addProductController.isLoaded()) addProductController.onLoadTask();
-                    addProductController.show();
-                }
+                addProductController.openWindow();
             } else {
-                if (addServiceController != null) {
-                    if (!addServiceController.isLoaded()) addServiceController.onLoadTask();
-                    addServiceController.show();
-                }
+                addServiceController.openWindow();
             }
         });
     }
-
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-        addProductController = new AddProductController(this);
-        addServiceController = new AddServiceController(this);
-        
-        Loader loader = Loader.getInstance();
-        loader.load("fxml/add_product.fxml", addProductController);
-        loader.load("fxml/add_service.fxml", addServiceController);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        refresh();
-    }
     
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void dispose() {
+        super.dispose();
         disposables.dispose();
     }
 

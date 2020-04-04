@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
@@ -11,69 +11,55 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.util.Calendar;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class ChangeDueDateController extends Controller {
+public class ChangeDueDateController extends AbstractFxmlWindowController {
 
     @FXML private TextField tfCurrentDueDate;
     @FXML private DatePicker dpDueDate;
     @FXML private Button btnConfirm;
     @FXML private Button btnCancel;
     
-    private Stage stage;
-    private Scene scene;
-    
     private final BillingsController billingsController;
     private final CompositeDisposable disposables;
     private Billing billing;
     
     public ChangeDueDateController(BillingsController billingsController) {
+        super(ChangeDueDateController.class.getResource("change_due_date.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
     
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
-        btnCancel.setOnAction(evt -> close());
+    public void onFxmlLoaded() {
+        btnCancel.setOnAction(evt -> closeWindow());
         btnConfirm.setOnAction(evt -> {
             save();
-            close();
+            closeWindow();
         });
     }
 
-    public void show(Billing billing) {
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
+        disposables.dispose();
+    }
+    
+    public void openWindow(Billing billing) {
+        openWindow(); // AbstractFxmlWindowController
         clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setTitle("Change Due Date");
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-        }
-        stage.show();
         this.billing = billing;
         tfCurrentDueDate.setText(billing.getDueDate());
     }
-    
-    public void close() {
-        if (stage != null) stage.close();
-    }
-    
+
     private void clearFields() {
         tfCurrentDueDate.clear();
         dpDueDate.getEditor().clear();
@@ -111,11 +97,5 @@ public class ChangeDueDateController extends Controller {
                         }
                     }));
         }
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        disposables.dispose();
     }
 }

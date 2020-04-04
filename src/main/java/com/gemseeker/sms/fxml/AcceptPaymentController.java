@@ -3,6 +3,7 @@ package com.gemseeker.sms.fxml;
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Loader;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Balance;
 import com.gemseeker.sms.data.Billing;
@@ -16,7 +17,6 @@ import com.gemseeker.sms.fxml.components.ErrorDialog;
 import com.gemseeker.sms.fxml.components.PaymentListCellFactory;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import com.gemseeker.sms.fxml.components.QuestionDialog;
-import com.gemseeker.sms.fxml.print.PrintController;
 import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
@@ -37,12 +37,13 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AcceptPaymentController extends Controller {
+public class AcceptPaymentController extends AbstractFxmlWindowController {
     
     @FXML private Label lblBillingNo;
     @FXML private Label lblAccountNo;
@@ -59,12 +60,9 @@ public class AcceptPaymentController extends Controller {
     @FXML private Button btnConfirm;
     @FXML private Button btnCancel;
     
-    private Stage stage;
-    private Scene scene;
-    
     private final BillingsController billingsController;
-    private ReceiptFormController receiptFormController;
-    private PrintController printController;
+    private final ReceiptFormController receiptFormController = new ReceiptFormController();
+    private final PrintController printController = new PrintController();
     private Billing billing;
     
     private double mAmountDue;
@@ -74,16 +72,17 @@ public class AcceptPaymentController extends Controller {
     private final CompositeDisposable disposables;
     
     public AcceptPaymentController(BillingsController billingsController) {
+        super(AcceptPaymentController.class.getResource("accept_payment.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         Utils.setAsNumericalTextFields(tfAmountDue, tfAmountReceived, tfChange);
         tfAmountReceived.textProperty().addListener((o, t1, t2) -> calculate());
         items.setCellFactory(new PaymentListCellFactory());
-        btnCancel.setOnAction(evt -> close());
+        btnCancel.setOnAction(evt -> closeWindow());
         btnConfirm.setOnAction(evt -> {
             String receivedStr = tfAmountReceived.getText();
             if (receivedStr.isEmpty()) {
@@ -97,43 +96,25 @@ public class AcceptPaymentController extends Controller {
                 }
             }
         });
-    }
-
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-        receiptFormController = new ReceiptFormController();
-        printController = new PrintController();
         
-        Loader loader = Loader.getInstance();
+        // load reciept and print controllers
+        final Loader loader = Loader.getInstance();
         loader.load("fxml/receipt2.fxml", receiptFormController);
         loader.load("fxml/print.fxml", printController);
     }
 
-    public void show(Billing billing) {
-        if (billing == null) {
-            ErrorDialog.show("Uh-oh!", "Selected billing entry is null!");
-            return;
-        }
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
+        disposables.dispose();
+    }
+
+    public void openWindow(Billing billing) {
+        openWindow(); // AbstractFxmlWindowController
         clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setTitle("Accept Payment");
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-        }
-        stage.show();
         showDetails(billing);
         this.billing = billing;
     }
-    
-    public void close() {
-        if (stage != null) {
-            stage.close();
-        }
-    }
-    
+
     private void confirmAndPrint() {
         String amountStr = tfAmountReceived.getText();
         String changeStr = tfChange.getText();
@@ -223,13 +204,13 @@ public class AcceptPaymentController extends Controller {
                                     printReceipt(key);
                                 }, "YES", "NO");
                         
-                        close();
+                        closeWindow();
                         billingsController.updateBillingTable();
                     }, err -> {
                         if (err.getCause() != null) {
                             ProgressBarDialog.close();
                             ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
-                            close();
+                            closeWindow();
                         }
                     }));
         }
@@ -316,12 +297,4 @@ public class AcceptPaymentController extends Controller {
         mBalance = 0;
         mChange = 0;
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        printController.onDestroy();
-        disposables.dispose();
-    }
-    
 }

@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import static com.gemseeker.sms.data.EnumBillingStatus.*;
 import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.Account;
@@ -20,20 +20,14 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
-import java.util.ResourceBundle;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.ComboBox;
@@ -42,18 +36,14 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddWISPBillingController extends Controller {
+public class AddWISPBillingController extends AbstractFxmlWindowController {
 
-    private Stage stage;
-    private Scene scene;
-    
     @FXML ChoiceBox<Account> cbAccounts;
     @FXML DatePicker dateFrom;
     @FXML DatePicker dateTo;
@@ -77,12 +67,13 @@ public class AddWISPBillingController extends Controller {
     private final CompositeDisposable disposables;
     
     public AddWISPBillingController(BillingsController billingsController) {
+        super(AddWISPBillingController.class.getResource("add_wisp_billing.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
     
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         // set numerical textfields
         Utils.setAsNumericalTextFields(tfAmount);
         
@@ -132,50 +123,26 @@ public class AddWISPBillingController extends Controller {
         btnSaveOnly.setOnAction(evt -> {
             if (fieldsValidated()) {
                 save();
-                close();
+                closeWindow();
                 billingsController.refresh();
             }
         });
         
-        btnCancel.setOnAction(evt -> {
-            if (stage != null) stage.close();
-        });
+        btnCancel.setOnAction(evt -> closeWindow());
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask(); 
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
     }
 
-    public void show() {
-        clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Billing");
-            if (scene == null) scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.initModality(Modality.APPLICATION_MODAL);
-        }
-        stage.show();
+    @Override
+    public void openWindow() {
+        super.openWindow();
         loadAccounts();
         loadServices();
     }
-    
-    public void close() {
-        if (stage != null) stage.close();
-    }
-    
+
     private void loadServices() {
         ProgressBarDialog.show();
         disposables.add(Observable.fromCallable(() -> {
@@ -246,7 +213,7 @@ public class AddWISPBillingController extends Controller {
                 }, err -> {
                     if (err.getCause() != null) {
                         ErrorDialog.show("Failed to load accounts.", err.getLocalizedMessage());
-                        if (stage != null) stage.close();
+                        closeWindow();
                     }
                 }));
     }

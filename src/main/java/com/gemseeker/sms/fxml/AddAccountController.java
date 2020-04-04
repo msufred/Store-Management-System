@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.EnumAccountStatus;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Address;
@@ -15,16 +15,11 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ChoiceBox;
@@ -35,17 +30,14 @@ import javafx.scene.control.TextField;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddAccountController extends Controller {
+public class AddAccountController extends AbstractFxmlWindowController {
 
-    private Stage stage;
-    private Scene scene;
     @FXML private RadioButton rbPersonal;
     @FXML private RadioButton rbCommercial;
     @FXML private Button btnGenerate;
@@ -88,17 +80,13 @@ public class AddAccountController extends Controller {
     private final CompositeDisposable disposables;
     
     public AddAccountController(AccountsController accountsController) {
+        super(AddAccountController.class.getResource("add_account.fxml"));
         this.accountsController = accountsController;
         disposables = new CompositeDisposable();
     }
     
     @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-    }
-
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
+    protected void onFxmlLoaded() {
         final ToggleGroup rbGroup = new ToggleGroup();
         rbGroup.getToggles().addAll(rbPersonal, rbCommercial);
         
@@ -125,29 +113,24 @@ public class AddAccountController extends Controller {
        
         btnSave.setOnAction(evt -> {
             save();
-            close();
+            closeWindow();
             accountsController.refresh();
         });
-        btnCancel.setOnAction(evt -> close());
+        btnCancel.setOnAction(evt -> closeWindow());
         
         setupTextFields(tfFirstname, tfLastname, tfLandmark, tfContactNo);
         Utils.setAsNumericalTextFields(tfIP01, tfIP02, tfIP03, tfIP04, tfLatitude, tfLongitude, tfElevation);
     }
 
-    public void show() {
-        clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Account");
-            if (scene == null) scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.initModality(Modality.APPLICATION_MODAL);
-        }
-        stage.show();
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
+        disposables.dispose();
     }
-    
-    public void close() {
-        if (stage != null) stage.close();
+
+    @Override
+    public void openWindow() {
+        super.openWindow();
+        clearFields();
     }
     
     private void clearFields() {
@@ -343,10 +326,5 @@ public class AddAccountController extends Controller {
                 !tfIP03.getText().isEmpty() &&
                 !tfIP04.getText().isEmpty();
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        disposables.dispose();
-    }
+    
 }

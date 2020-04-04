@@ -1,7 +1,11 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
-import com.gemseeker.sms.Loader;
+import com.gemseeker.seekiconsfx.material.AddIcon6;
+import com.gemseeker.seekiconsfx.material.CreateIcon;
+import com.gemseeker.seekiconsfx.material.DeleteIcon;
+import com.gemseeker.seekiconsfx.material.RefreshIcon;
+import com.gemseeker.seekiconsfx.material.SearchIcon;
+import com.gemseeker.sms.core.AbstractPanelController;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Address;
 import com.gemseeker.sms.data.Database;
@@ -9,19 +13,18 @@ import com.gemseeker.sms.data.EnumAccountStatus;
 import com.gemseeker.sms.data.InternetSubscription;
 import com.gemseeker.sms.fxml.components.AccountNameTableCell;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
+import com.gemseeker.sms.fxml.components.InfoDialog;
 import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
 import java.net.URL;
-import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Optional;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
@@ -37,62 +40,82 @@ import javafx.scene.layout.VBox;
  *
  * @author gemini1991
  */
-public class AccountsController extends Controller {
+public class AccountsController extends AbstractPanelController {
 
-    @FXML Button btnAdd;
-    @FXML Button btnEdit;
-    @FXML Button btnDelete;
-    @FXML Button btnRefresh;
-    @FXML Button btnChangeStatus;
+    @FXML private Button btnAdd;
+    @FXML private Button btnEdit;
+    @FXML private Button btnDelete;
+    @FXML private Button btnRefresh;
+    @FXML private Button btnChangeStatus;
+    @FXML private Button btnSearch;
     
-    @FXML TableView<Account> accountsTable;
-    @FXML TableColumn<Account, String> colAccountNo;
-    @FXML TableColumn<Account, String> colName;
-    @FXML TableColumn<Account, Address> colAddress;
-    @FXML TableColumn<Account, String> colContact;
-    @FXML TableColumn<Account, EnumAccountStatus> colStatus;
-    @FXML Label labelEmpty;
-    @FXML VBox detailsContent;
+    @FXML private TableView<Account> accountsTable;
+    @FXML private TableColumn<Account, String> colAccountNo;
+    @FXML private TableColumn<Account, String> colName;
+    @FXML private TableColumn<Account, Address> colAddress;
+    @FXML private TableColumn<Account, String> colContact;
+    @FXML private TableColumn<Account, EnumAccountStatus> colStatus;
+    @FXML private Label labelEmpty;
+    @FXML private VBox detailsContent;
     
     // account details group
-    @FXML TitledPane detailsGroupPane;
-    @FXML Label lblAccountNo;
-    @FXML Label lblName;
-    @FXML Label lblAddress;
-    @FXML Label lblContact;
-    @FXML Label lblStatus;
-    @FXML Label lblType;
+    @FXML private TitledPane detailsGroupPane;
+    @FXML private Label lblAccountNo;
+    @FXML private Label lblName;
+    @FXML private Label lblAddress;
+    @FXML private Label lblContact;
+    @FXML private Label lblStatus;
+    @FXML private Label lblType;
     
     // subscription group
-    @FXML TitledPane internetGroupPane;
-    @FXML Label lblBandwidth;
-    @FXML Label lblAmount;
-    @FXML Label lblIPAddress;
-    @FXML Label lblLongitude;
-    @FXML Label lblLatitude;
-    @FXML Label lblElevation;
+    @FXML private TitledPane internetGroupPane;
+    @FXML private Label lblBandwidth;
+    @FXML private Label lblAmount;
+    @FXML private Label lblIPAddress;
+    @FXML private Label lblLongitude;
+    @FXML private Label lblLatitude;
+    @FXML private Label lblElevation;
     
-    private AddAccountController addAccountController;
+    // icons
+    private static final double ICON_SIZE = 12;
+    private final AddIcon6 addIcon;
+    private final CreateIcon editIcon;
+    private final DeleteIcon deleteIcon;
+    private final RefreshIcon refreshIcon;
+    private final SearchIcon searchIcon;
+    
+    private final AddAccountController addAccountController = new AddAccountController(this);
     private final CompositeDisposable disposables;
     
     public AccountsController() {
         disposables = new CompositeDisposable();
-    }
-
-    /**
-     * Initialize controllers; load FXMLs
-     */
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-        addAccountController = new AddAccountController(this);
         
-        Loader loader = Loader.getInstance();
-        loader.load("fxml/add_account.fxml", addAccountController);
+        // create icons
+        addIcon = new AddIcon6(ICON_SIZE);
+        editIcon = new CreateIcon(ICON_SIZE);
+        deleteIcon = new DeleteIcon(ICON_SIZE);
+        refreshIcon = new RefreshIcon(ICON_SIZE + 4);
+        searchIcon = new SearchIcon(ICON_SIZE);
     }
 
     @Override
-    public void initialize(URL location, ResourceBundle resources) {
+    protected void makePanel() {
+        final URL fxmlURL = AccountsController.class.getResource("accounts.fxml");
+        final FXMLLoader loader = new FXMLLoader();
+        loader.setController(this);
+        loader.setLocation(fxmlURL);
+        try {
+            setPanel(loader.load());
+            controllerDidLoadFxml();
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException("Failed to load " + fxmlURL.getFile());
+        }
+    }
+    
+    private void controllerDidLoadFxml() {
+        assert getPanel() != null;
+        
+        // Init components and listeners
         colAccountNo.setCellValueFactory(new PropertyValueFactory<>("accountNumber"));
         colName.setCellFactory(col -> new AccountNameTableCell());
         colAddress.setCellValueFactory(new PropertyValueFactory<>("address"));
@@ -111,13 +134,17 @@ public class AccountsController extends Controller {
             }
         });
         
+        btnAdd.setGraphic(addIcon);
         btnAdd.setOnAction(evt -> {
-            if (addAccountController != null) {
-                if (!addAccountController.isLoaded()) addAccountController.onLoadTask();
-                addAccountController.show();
-            }
+            if (addAccountController != null) addAccountController.openWindow();
         });
         
+        btnEdit.setGraphic(editIcon);
+        btnEdit.setOnAction(evt -> {
+            InfoDialog.show("Info Sample", "This is a sample");
+        });
+        
+        btnDelete.setGraphic(deleteIcon);
         btnDelete.setOnAction(evt -> {
             Account account = accountsTable.getSelectionModel().getSelectedItem();
             if(account != null) {
@@ -137,19 +164,15 @@ public class AccountsController extends Controller {
             }
         });
         
+        btnRefresh.setGraphic(refreshIcon);
         btnRefresh.setOnAction(evt -> refresh());
+        
+        btnSearch.setGraphic(searchIcon);
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        refresh();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        addAccountController.onDestroy();
+    public void dispose() {
+        super.dispose();
         disposables.dispose();
     }
 

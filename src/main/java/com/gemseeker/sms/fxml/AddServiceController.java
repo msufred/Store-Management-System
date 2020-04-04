@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Service;
@@ -11,73 +11,53 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddServiceController extends Controller {
+public class AddServiceController extends AbstractFxmlWindowController {
 
     @FXML TextField tfName;
     @FXML TextField tfPrice;
     @FXML TextArea taDesc;
     @FXML Button btnSave;
     @FXML Button btnCancel;
-    
-    private Stage stage;
-    private Scene scene;
-    
+
     private final InventoryController inventoryController;
     private final CompositeDisposable disposables;
     
     public AddServiceController(InventoryController inventoryController) {
+        super(AddServiceController.class.getResource("add_service.fxml"));
         this.inventoryController = inventoryController;
         disposables = new CompositeDisposable();
     }
     
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         Utils.setAsNumericalTextFields(tfPrice);
         
-        btnCancel.setOnAction(evt -> {
-            if (stage != null) stage.close();
-        });
+        btnCancel.setOnAction(evt -> closeWindow());
         
         btnSave.setOnAction(evt -> {
             if (fieldsValidated()) {
                 save();
-                close();
+                closeWindow();
                 inventoryController.refresh();
             }
         });
     }
 
-    public void show() {
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Service");
-            stage.initModality(Modality.APPLICATION_MODAL);
-            stage.setAlwaysOnTop(true);
-            
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-        }
-        stage.show();
-    }
-    
-    public void close() {
-        if (stage != null) stage.close();
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
+        disposables.dispose();
     }
     
     private boolean fieldsValidated() {
@@ -121,11 +101,5 @@ public class AddServiceController extends Controller {
         service.setEstPrice(Double.parseDouble(tfPrice.getText()));
         service.setDescription(taDesc.getText());
         return service;
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        disposables.dispose();
     }
 }

@@ -1,6 +1,6 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
+import com.gemseeker.sms.core.AbstractPanelController;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
@@ -10,11 +10,13 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
 import java.net.URL;
 import java.util.Date;
 import java.util.ResourceBundle;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -23,7 +25,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
  *
  * @author gemini1991
  */
-public class HistoryController extends Controller {
+public class HistoryController extends AbstractPanelController {
 
     @FXML private TableView<History> historyTable;
     @FXML private TableColumn<History, Date> colDate;
@@ -35,32 +37,7 @@ public class HistoryController extends Controller {
     public HistoryController() {
         disposables = new CompositeDisposable();
     }
-    
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
-        colDate.setCellFactory(new HistoryDateTableCellFactory());
-        colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
-        colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
-    }
 
-    @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume(); 
-        refresh();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        disposables.dispose();
-    }
-    
     public void refresh() {
         ProgressBarDialog.show();
         disposables.add(Observable.fromCallable(() -> {
@@ -76,4 +53,39 @@ public class HistoryController extends Controller {
                     }
                 }));
     }
+
+    @Override
+    protected void makePanel() {
+        final URL fxmlURL = HistoryController.class.getResource("history.fxml");
+        final FXMLLoader loader = new FXMLLoader();
+        loader.setController(this);
+        loader.setLocation(fxmlURL);
+        try {
+            setPanel(loader.load());
+            controllerDidLoadFxml();
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException("Failed to load " + fxmlURL.getFile());
+        }
+    }
+    
+    private void controllerDidLoadFxml() {
+        // Assert & init components
+        assert historyTable != null;
+        assert historyTable.getParent() != null;
+        
+        colDate.setCellValueFactory(new PropertyValueFactory<>("date"));
+        colDate.setCellFactory(new HistoryDateTableCellFactory());
+        colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
+        colDescription.setCellValueFactory(new PropertyValueFactory<>("description"));
+        
+        // refresh table
+        refresh();
+    }
+
+    @Override
+    public void dispose() {
+        super.dispose();
+        disposables.dispose();
+    }
+    
 }

@@ -1,40 +1,34 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.History;
 import com.gemseeker.sms.data.Revenue;
 import com.gemseeker.sms.fxml.components.ErrorDialog;
-import com.gemseeker.sms.fxml.components.ProgressBarDialog;
 import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.LocalDate;
 import java.util.Date;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.DatePicker;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddRevenueController extends Controller {
+public class AddRevenueController extends AbstractFxmlWindowController {
     
     @FXML private TextField tfAmount;
     @FXML private ChoiceBox<String> cbTypes;
@@ -42,52 +36,24 @@ public class AddRevenueController extends Controller {
     @FXML private TextArea taDescription;
     @FXML private Button btnAdd;
     @FXML private Button btnCancel;
-    
-    private Stage stage;
-    private Scene scene;
+    @FXML private ProgressBar progressBar;
     
     private final SalesController salesController;
     private final CompositeDisposable disposables;
     
     public AddRevenueController(SalesController salesController) {
+        super(AddRevenueController.class.getResource("add_revenue.fxml"));
         this.salesController = salesController;
         disposables = new CompositeDisposable();
     }
 
     @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        Utils.setAsNumericalTextField(tfAmount);
-        cbTypes.setItems(FXCollections.observableArrayList(
-                EnumBillingType.WISP.getName(),
-                EnumBillingType.ITEM.getName(),
-                "Other"
-        ));
-        
-        btnAdd.setOnAction(evt -> {
-            if (fieldsValidated()) {
-                save();
-            }
-        });
-        
-        btnCancel.setOnAction(evt -> {
-            close();
-        });
-    }
-
-    public void show() {
+    public void openWindow() {
+        // Call super.openWindow() first.
+        // This is to make sure that the components (ie. stage, scene and root)
+        // are created first.
+        super.openWindow();
         clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Revenue");
-            stage.initModality(Modality.APPLICATION_MODAL);
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-        }
-        stage.show();
-    }
-    
-    public void close() {
-        if (stage != null) stage.close();
     }
     
     private void clearFields() {
@@ -105,7 +71,7 @@ public class AddRevenueController extends Controller {
     
     private void save() {
         Revenue revenue = getRevenueInfo();
-        ProgressBarDialog.show();
+        showProgress();
         disposables.add(Observable.fromCallable(() -> {
             Database database = Database.getInstance();
             boolean added = database.addRevenue(revenue);
@@ -120,16 +86,16 @@ public class AddRevenueController extends Controller {
             return added;
         }).subscribeOn(Schedulers.newThread()).observeOn(JavaFxScheduler.platform())
                 .subscribe(added -> {
-                    ProgressBarDialog.close();
+                    hideProgress();
                     if (!added) {
                         ErrorDialog.show("Oh-snap!", "Failed to add revenue entry. Try again.");
                     } else {
-                        close();
+                        closeWindow();
                         salesController.refresh();
                     }
                 }, err -> {
                     if (err.getCause() != null) {
-                        ProgressBarDialog.close();
+                        hideProgress();
                         ErrorDialog.show("Oh snap!", err.getLocalizedMessage());
                     }
                 }));
@@ -150,10 +116,37 @@ public class AddRevenueController extends Controller {
         revenue.setDescription(taDescription.getText());
         return revenue;
     }
-    
+
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    protected void onFxmlLoaded() {
+        Utils.setAsNumericalTextField(tfAmount);
+        cbTypes.setItems(FXCollections.observableArrayList(
+                EnumBillingType.WISP.getName(),
+                EnumBillingType.ITEM.getName(),
+                "Other"
+        ));
+        
+        btnAdd.setOnAction(evt -> {
+            if (fieldsValidated()) {
+                save();
+            }
+        });
+        
+        btnCancel.setOnAction(evt -> {
+            closeWindow();
+        });
+    }
+
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
+    }
+
+    private void showProgress() {
+        progressBar.setVisible(true);
+    }
+    
+    private void hideProgress() {
+        progressBar.setVisible(false);
     }
 }

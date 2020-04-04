@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Account;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
@@ -16,59 +16,51 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class EditWISPBillingController extends Controller {
+public class EditWISPBillingController extends AbstractFxmlWindowController {
 
-    private Stage stage;
-    private Scene scene;
-    
-    @FXML TextField tfAccount;
-    @FXML DatePicker dateFrom;
-    @FXML DatePicker dateTo;
-    @FXML TextField tfData;
-    @FXML TextField tfMonthlyPayment;
-    @FXML TextField tfBalance;
-    @FXML TextField tfDesc;
-    @FXML ListView<Payment> listPayments;
-    @FXML TextField tfTotal;
-    @FXML Button btnUpdatePrint;
-    @FXML Button btnUpdate;
-    @FXML Button btnCancel;
-    @FXML DatePicker dueDate;
-    @FXML TextField tfStatus;
+    @FXML private TextField tfAccount;
+    @FXML private DatePicker dateFrom;
+    @FXML private DatePicker dateTo;
+    @FXML private TextField tfData;
+    @FXML private TextField tfMonthlyPayment;
+    @FXML private TextField tfBalance;
+    @FXML private TextField tfDesc;
+    @FXML private ListView<Payment> listPayments;
+    @FXML private TextField tfTotal;
+    @FXML private Button btnUpdatePrint;
+    @FXML private Button btnUpdate;
+    @FXML private Button btnCancel;
+    @FXML private DatePicker dueDate;
+    @FXML private TextField tfStatus;
     
     private final BillingsController billingsController;
     private final CompositeDisposable disposables;
     private Billing billing;
     
     public EditWISPBillingController(BillingsController billingsController) {
+        super(EditWISPBillingController.class.getResource("edit_wisp_billing.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
     
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         listPayments.setCellFactory(new PaymentListCellFactory());
         
         btnUpdatePrint.setOnAction(evt -> {
@@ -78,42 +70,23 @@ public class EditWISPBillingController extends Controller {
         btnUpdate.setOnAction(evt -> {
             if (fieldsValidated()) {
                 update();
-                close();
+                closeWindow();
                 billingsController.refresh();
             }
         });
         
-        btnCancel.setOnAction(evt -> {
-            if (stage != null) stage.close();
-        });
+        btnCancel.setOnAction(evt -> closeWindow());
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask(); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
     }
     
-    public void show(int billingNo) {
+    public void openWindow(int billingNo) {
+        openWindow(); // AbstractFxmlWindowController
         clearFields();
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Billing");
-            if (scene == null) scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.initModality(Modality.APPLICATION_MODAL);
-        }
-        stage.show();
         loadBilling(billingNo);
-    }
-    
-    public void close() {
-        if (stage != null) stage.close();
     }
     
     private void clearFields() {
@@ -155,7 +128,7 @@ public class EditWISPBillingController extends Controller {
     
     private void showDetails(Billing billing) {
         if (billing == null) {
-            close();
+            closeWindow();
             ErrorDialog.show("Billing Update Error", "Billing entry is null!");
         } else {
             Account acct = billing.getAccount();

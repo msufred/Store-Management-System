@@ -1,7 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.Billing;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.History;
@@ -13,27 +13,20 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
-import java.net.URL;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
-import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.SpinnerValueFactory;
 import javafx.scene.control.TextField;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class AddItemController extends Controller {
+public class AddItemController extends AbstractFxmlWindowController {
     
     @FXML private ComboBox<Product> cbItems;
     @FXML private TextField tfPrice;
@@ -43,9 +36,6 @@ public class AddItemController extends Controller {
     @FXML private Button btnCancel;
     @FXML private Button btnAdd;
     
-    private Stage stage;
-    private Scene scene;
-    
     private final BillingsController billingsController;
     private Billing billing;
     
@@ -54,12 +44,13 @@ public class AddItemController extends Controller {
     private final CompositeDisposable disposables;
     
     public AddItemController(BillingsController billingsController) {
+        super(AddItemController.class.getResource("add_item.fxml"));
         this.billingsController = billingsController;
         disposables = new CompositeDisposable();
     }
 
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
+    public void onFxmlLoaded() {
         cbItems.getSelectionModel().selectedItemProperty().addListener((ov, p1, p2) -> {
             if (p2 != null) {
                 // show price and in stock
@@ -78,50 +69,22 @@ public class AddItemController extends Controller {
         
         btnAdd.setOnAction(evt -> {
             save();
-            close();
+            closeWindow();
         });
         
-        btnCancel.setOnAction(evt -> close());
+        btnCancel.setOnAction(evt -> closeWindow());
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask(); 
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void onCloseRequest(WindowEvent windowEvent) {
         disposables.dispose();
     }
-    
-    public void show(Billing billing) {
+
+    public void openWindow(Billing billing) {
+        super.openWindow();
         clearFields();
-        if (billing == null) {
-            ErrorDialog.show("OMG!", "No selected billing entry!");
-            return;
-        }
-        if (stage == null) {
-            stage = new Stage();
-            stage.setTitle("Add Item");
-            stage.initModality(Modality.APPLICATION_MODAL);
-            
-            scene = new Scene(getContentPane());
-            stage.setScene(scene);
-            stage.setAlwaysOnTop(true);
-        }
-        stage.show();
         this.billing = billing;
         loadProducts();
-    }
-    
-    public void close() {
-        if(stage != null) stage.close();
     }
     
     private void clearFields() {
