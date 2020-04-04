@@ -1,8 +1,7 @@
 package com.gemseeker.sms.fxml;
 
-import com.gemseeker.sms.Controller;
-import com.gemseeker.sms.Loader;
 import com.gemseeker.sms.Utils;
+import com.gemseeker.sms.core.AbstractPanelController;
 import com.gemseeker.sms.data.Database;
 import com.gemseeker.sms.data.EnumBillingType;
 import com.gemseeker.sms.data.Expense;
@@ -13,18 +12,17 @@ import io.reactivex.Observable;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.rxjavafx.schedulers.JavaFxScheduler;
 import io.reactivex.schedulers.Schedulers;
+import java.io.IOException;
 import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
-import java.util.ResourceBundle;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.PieChart;
 import javafx.scene.chart.XYChart;
@@ -39,7 +37,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
  *
  * @author gemini1991
  */
-public class SalesController extends Controller {
+public class SalesController extends AbstractPanelController {
     
     @FXML private Button btnAddRevenue;
     @FXML private Button btnAddExpense;
@@ -67,8 +65,8 @@ public class SalesController extends Controller {
     @FXML private TableColumn<Expense, String> colExpenseDescription;
     @FXML private TableColumn<Expense, Date> colExpenseDate;
     
-    private AddRevenueController addRevenueController;
-    private AddExpenseController addExpenseController;
+    private final AddRevenueController addRevenueController = new AddRevenueController(this);
+    private final AddExpenseController addExpenseController = new AddExpenseController(this);
     
     private final CompositeDisposable disposables;
     
@@ -77,30 +75,29 @@ public class SalesController extends Controller {
     }
 
     @Override
-    public void onLoadTask() {
-        super.onLoadTask();
-        addRevenueController = new AddRevenueController(this);
-        addExpenseController = new AddExpenseController(this);
-        
-        Loader loader = Loader.getInstance();
-        loader.load("fxml/add_revenue.fxml", addRevenueController);
-        loader.load("fxml/add_expense.fxml", addExpenseController);
+    protected void makePanel() {
+        final URL fxmlURL = SalesController.class.getResource("sales.fxml");
+        final FXMLLoader loader = new FXMLLoader();
+        loader.setController(this);
+        loader.setLocation(fxmlURL);
+        try {
+            setPanel(loader.load());
+            controllerDidLoadFxml();
+        } catch (RuntimeException | IOException e) {
+            throw new RuntimeException("Failed to load " + fxmlURL.getFile());
+        }
     }
 
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
+    private void controllerDidLoadFxml() {
+        assert getPanel() != null;
+        
+        // Init components and listeners
         btnAddRevenue.setOnAction(evt -> {
-            if (addRevenueController != null) {
-                if (!addRevenueController.isLoaded()) addRevenueController.onLoadTask();
-                addRevenueController.show();
-            }
+            if (addRevenueController != null) addRevenueController.openWindow();
         });
         
         btnAddExpense.setOnAction(evt -> {
-            if (addExpenseController != null) {
-                if (!addExpenseController.isLoaded()) addExpenseController.onLoadTask();
-                addExpenseController.show();
-            }
+            if (addExpenseController != null) addExpenseController.openWindow();
         });
         
         colRevenueNo.setCellValueFactory(new PropertyValueFactory<>("revenueNo"));
@@ -152,12 +149,6 @@ public class SalesController extends Controller {
                 }
             }
         });
-    } 
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        refresh();
     }
     
     public void refresh() {
@@ -371,8 +362,8 @@ public class SalesController extends Controller {
     }
     
     @Override
-    public void onDestroy() {
-        super.onDestroy();
+    public void dispose() {
+        super.dispose();
         disposables.dispose();
     }
 }

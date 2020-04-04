@@ -2,6 +2,7 @@ package com.gemseeker.sms.fxml;
 
 import com.gemseeker.sms.Controller;
 import com.gemseeker.sms.Preferences;
+import com.gemseeker.sms.core.AbstractFxmlWindowController;
 import com.gemseeker.sms.data.User;
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -13,12 +14,13 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 /**
  *
  * @author gemini1991
  */
-public class SettingsController extends Controller {
+public class SettingsController extends AbstractFxmlWindowController {
 
     @FXML private VBox databaseGroup;
     @FXML private TextField tfDatabaseName;
@@ -32,45 +34,35 @@ public class SettingsController extends Controller {
     @FXML private Button btnCancel;
     @FXML private Button btnSave;
     
-    private Stage stage;
-    private Scene scene;
-    
     private User mUser;
     
+    public SettingsController() {
+        super(SettingsController.class.getResource("settings.fxml"));
+    }
+
     @Override
-    public void initialize(URL url, ResourceBundle rb) {
-        
-        btnCancel.setOnAction(evt -> close());
+    protected void onFxmlLoaded() {
+        btnCancel.setOnAction(evt -> closeWindow());
         btnSave.setOnAction(evt -> {
             // close for now
-            close();
+            closeWindow();
         });
     }
 
-    public void show(User user) {
+    @Override
+    public void onCloseRequest(WindowEvent windowEvent) {
+        
+    }
+    
+    public void openWindow(User user) {
+        openWindow(); // AbstractFxmlWindowController
         clearFields();
-        if (stage == null) {
-            initStage();
-        }
-        stage.show();
         loadPreferences();
         if (user.getAuthority().equals("administrator")) {
             databaseGroup.setDisable(false);
         }
     }
-    
-    public void close() {
-        if (stage != null) stage.close();
-    }
-    
-    private void initStage() {
-        stage = new Stage();
-        stage.setTitle("Settings");
-        stage.initModality(Modality.APPLICATION_MODAL);
-        scene = new Scene(getContentPane());
-        stage.setScene(scene);
-    }
-    
+
     private void loadPreferences() {
         Preferences pref = Preferences.getInstance();
         tfDatabaseName.setText(pref.getDatabaseName());
