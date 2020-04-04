@@ -80,6 +80,19 @@ public class Utils {
             tf.addEventFilter(KeyEvent.KEY_TYPED, evt -> evt.consume());
         }
     }
+    
+    public static ObservableList<String> getMonthsList() {
+        return FXCollections.observableArrayList(
+                "All", "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+        );
+    }
+    
+    public static ObservableList<String> getYearsList() {
+        return FXCollections.observableArrayList(
+                "All", "2020", "2021", "2022", "2023", "2024", "2025"
+        );
+    }
 
     public static int monthIntegerValue(String month) {
         switch (month.toUpperCase()) {
@@ -125,6 +138,23 @@ public class Utils {
     
     public static int compare(Calendar cal1, Calendar cal2) {
         return cal1.compareTo(cal2);
+    }
+    
+    public static String toStringMoneyFormat(double amount) {
+        String str = String.format("%.2f", amount);
+        StringBuilder sb = new StringBuilder();
+        int startIndex = str.indexOf('.');
+        if (startIndex < 0) startIndex = 0;
+        int decCount = 0;
+        for (int i=startIndex-1; i>=0; i--) {
+            if (decCount == 3) {
+                sb.append(',');
+                decCount = 0;
+            }
+            sb.append(str.charAt(i));
+            decCount++;
+        }
+        return sb.reverse().append(str.substring(startIndex)).toString();
     }
     
     public static ObservableList<String> getProvinceList() {
